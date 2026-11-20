@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ACRI · Reviewer Portal</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<script src="/config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/*@@CSS@@*/
+.xcard{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:16px 0;border-top:1px solid var(--line)}
+.xcard:first-of-type{border-top:0}
+.counts{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:6px}
+.counts b{color:var(--navy);font-size:14px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="ov" id="ov"><div class="box" id="ovbox"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+/* ==========================================================================
+   ACRI Online Examination — Reviewer portal (oes.acriindia.org.in/review)
+   Paste your Apps Script /exec URL below.
+   ========================================================================== */
+const API_URL = window.ACRI_API_URL || 'PASTE_YOUR_WEB_APP_EXEC_URL_HERE';
+const EMBLEM = '__EMBLEM__';
+const PORTAL = 'review';
+const PORTAL_NAME = 'Reviewer Portal';
+const PRISTINE = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+const BOOT = window.__ACRI_BOOT || null;
+const SKEY = 'acri_review_session';
+
+//@@HELPERS@@
+
+//@@AUTH@@
+
+/* ============================ SHELL ============================ */
+
+let NAVSEL = 'exams';
+function shell(view, arg) {
+  NAVSEL = ['exams', 'live'].indexOf(view) >= 0 ? view : NAVSEL;
+  if (!$('#nav')) {
+    $('#app').innerHTML = `<header class="top">${brand(PORTAL_NAME)}
+      <div class="who"><span>${esc(SESSION.user.name)} · ${esc(SESSION.user.email)}</span>
+      <button class="btn ghost sm" id="out">Sign out</button></div></header>
+      <div class="stripe"></div>
+      <nav class="nav" id="nav"><button data-v="exams">My exams <span class="n" id="qn" style="display:none"></span></button><button data-v="live">Live Proctor</button></nav>
+      <main class="wrap" id="view"></main>`;
+    $('#nav').querySelectorAll('button').forEach(b => b.onclick = () => shell(b.dataset.v));
+    $('#out').onclick = async () => { try { await api('logout'); } catch (e) {} saveSession(null); authView('', 'in'); };
+    if ($('#full')) $('#full').onclick = openFullWindow;
+  }
+  $('#nav').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === NAVSEL));
+  VIEW++;
+  window.scrollTo(0, 0);
+  $('#view').innerHTML = '<div class="spin"></div>';
+  ({ exams: examsView, attempts: attemptsView, attempt: attemptView, live: liveView })[view](arg);
+}
+
+const TO_MARK = ['Submitted', 'Under Review', 'Returned'];
+
+/* ============================ MY EXAMS ============================ */
+
+async function examsView() {
+  const my = VIEW;
+  let r;
+  try { r = await api('myExams'); } catch (e) { if (my === VIEW) $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  if (my !== VIEW) return;
+  EXAMS = r.exams;
+  const c = (e, k) => e.counts[k] || 0;
+  const toMark = EXAMS.reduce((s, e) => s + TO_MARK.reduce((t, k) => t + c(e, k), 0), 0);
+  const q = $('#qn'); if (q) { q.textContent = toMark; q.style.display = toMark ? 'inline-block' : 'none'; }
+  const returned = EXAMS.reduce((s, e) => s + c(e, 'Returned'), 0);
+  $('#view').innerHTML = `
+    <div class="tiles" style="grid-template-columns:repeat(4,1fr)">
+      <div class="tile ${EXAMS.some(e => e.state === 'live') ? 'hl' : ''}"><b>${EXAMS.filter(e => e.state === 'live').length}</b><span>Assigned exams live now</span></div>
+      <div class="tile"><b>${toMark}</b><span>Attempts to mark</span></div>
+      <div class="tile"><b>${returned}</b><span>Returned by the CoE</span></div>
+      <div class="tile"><b>${EXAMS.length}</b><span>Exams assigned to you</span></div>
+    </div>
+    ${returned ? `<div class="note red" style="margin:-4px 0 16px">The Controller of Examinations returned ${returned} attempt(s) to you for revision. Open the exam and look for the <b>Returned</b> filter.</div>` : ''}
+    <div class="card"><div class="eyebrow">Assigned to you</div><h2 style="font-size:20px">Exams</h2>
+    ${EXAMS.length ? EXAMS.map((e, i) => `<div class="xcard"><div>
+        <div class="title">${esc(e.title)} <span class="${pillCls(e.state)}">${{ live: 'Live', upcoming: 'Upcoming', closed: 'Closed', off: 'Off' }[e.state]}</span></div>
+        <div class="small muted">${esc(e.startIST)} → ${esc(e.endIST)} IST · ${e.totalMarks} marks</div>
+        <div class="counts"><span><b>${c(e, 'In Progress')}</b> writing</span><span><b>${TO_MARK.reduce((t, k) => t + c(e, k), 0)}</b> to mark</span><span><b>${c(e, 'Sent to CoE')}</b> with CoE</span><span><b>${c(e, 'Verified') + c(e, 'Result Sent')}</b> verified</span></div></div>
+        <div class="row">${e.live && e.state === 'live' ? `<button class="btn ghost" data-lv="${i}">Live Proctor</button>` : ''}<button class="btn" data-at="${i}">Mark answers</button></div></div>`).join('')
+      : '<div class="empty">No exams are assigned to you yet. The Controller of Examinations assigns reviewers to each exam.</div>'}</div>`;
+  $('#view').querySelectorAll('[data-at]').forEach(b => b.onclick = () => shell('attempts', EXAMS[b.dataset.at].id));
+  $('#view').querySelectorAll('[data-lv]').forEach(b => b.onclick = () => shell('live', EXAMS[b.dataset.lv].id));
+}
+
+/* ============================ ATTEMPTS ============================ */
+
+let ATT_FILTER = 'To mark';
+async function attemptsView(examId) {
+  const my = VIEW;
+  let r;
+  try { r = await api('listAttempts', { examId }); } catch (e) { if (my === VIEW) $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  if (my !== VIEW) return;
+  const groups = { 'To mark': a => TO_MARK.indexOf(a.status) >= 0, 'Returned': a => a.status === 'Returned', 'Writing now': a => a.status === 'In Progress',
+    'With CoE': a => a.status === 'Sent to CoE', 'Verified': a => a.status === 'Verified' || a.status === 'Result Sent', 'All': a => true };
+  const draw = () => {
+    const list = r.attempts.filter(groups[ATT_FILTER]);
+    $('#view').innerHTML = `<div class="between" style="margin-bottom:14px"><button class="link" id="back">← My exams</button>${r.exam.live && r.exam.state === 'live' ? '<button class="btn" id="lv">Open Live Proctor</button>' : ''}</div>
+    <div class="card"><div class="eyebrow">Marking</div><h2 style="font-size:20px">${esc(r.exam.title)}</h2>
+      <p class="small muted" style="margin:4px 0 0">${esc(r.exam.startIST)} → ${esc(r.exam.endIST)} IST · ${r.exam.totalMarks} marks · MCQ marks are filled in automatically</p>
+      <div class="filters">${Object.keys(groups).map(g => `<button class="${ATT_FILTER === g ? 'on' : ''}" data-fl="${esc(g)}">${esc(g)} · ${r.attempts.filter(groups[g]).length}</button>`).join('')}</div>
+      ${list.length ? `<div class="tscroll"><table class="tbl"><thead><tr><th>Student</th><th>Status</th><th>Submitted</th><th>Warnings</th><th>Score</th></tr></thead><tbody>
+      ${list.map(a => `<tr class="click" data-id="${esc(a.id)}"><td><div class="title">${esc(a.name)}</div><div class="small muted">${esc(a.email)}</div></td>
+        <td><span class="${pillCls(a.status)}">${esc(a.status)}</span></td><td class="small">${esc(a.submitted || '—')}</td>
+        <td>${a.violations ? `<b style="color:var(--red)">${a.violations}</b>` : '0'}</td><td>${a.total !== '' && a.total != null ? `<b>${a.total}</b> / ${a.max}` : '—'}</td></tr>`).join('')}
+      </tbody></table></div>` : '<div class="empty">Nothing here.</div>'}</div>`;
+    $('#back').onclick = () => shell('exams');
+    if ($('#lv')) $('#lv').onclick = () => shell('live', examId);
+    $('#view').querySelectorAll('[data-fl]').forEach(b => b.onclick = () => { ATT_FILTER = b.dataset.fl; draw(); });
+    $('#view').querySelectorAll('tr[data-id]').forEach(t => t.onclick = () => {
+      const a = r.attempts.find(x => x.id === t.dataset.id);
+      if (a.status === 'In Progress') return toast('This student is still writing.');
+      shell('attempt', { id: t.dataset.id, examId });
+    });
+  };
+  draw();
+}
+
+/* ============================ MARK AN ATTEMPT ============================ */
+
+let AT = null;
+async function attemptView(arg) {
+  const my = VIEW;
+  let r;
+  try { r = await api('getAttempt', { attemptId: arg.id }); } catch (e) { if (my === VIEW) $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  if (my !== VIEW) return;
+  AT = r;
+  const a = r.attempt, st = a.status;
+  const editable = TO_MARK.indexOf(st) >= 0;
+  const VTYPES = ['TAB_HIDDEN', 'WINDOW_BLUR', 'FULLSCREEN_EXIT', 'SCREEN_SHARE_STOPPED', 'CAMERA_STOPPED'];
+  const nWritten = r.questions.filter(q => q.type !== 'MCQ').length;
+  $('#view').innerHTML = `<div class="between" style="margin-bottom:14px"><button class="link" id="back">← Attempts</button><span class="small muted">Attempt ${esc(a.id)}</span></div>
+  <div class="card"><div class="between"><div><div class="eyebrow">${esc(r.exam.title)}</div><h2 style="font-size:21px">${esc(a.name)} <span class="${pillCls(st)}" style="vertical-align:middle">${esc(st)}</span></h2>
+    <p class="small muted" style="margin:3px 0 0">${esc(a.email)} · submitted ${esc(a.submitted || '—')}${a.submitReason ? ' (' + esc(a.submitReason) + ')' : ''}</p></div>
+    <div style="text-align:right"><div style="font-family:Montserrat;font-weight:800;font-size:26px;color:var(--navy)"><span id="liveTot">—</span> <span class="muted" style="font-size:16px">/ ${a.max}</span></div>
+    <div class="small ${a.violations ? '' : 'muted'}" style="${a.violations ? 'color:var(--red);font-weight:700' : ''}">${a.violations} proctoring warning(s)</div></div></div>
+    ${st === 'Returned' && a.coeRemarks ? `<div class="note red"><b>Returned by the CoE:</b><br>${esc(a.coeRemarks).replace(/\n/g, '<br>')}</div>` : ''}
+    ${!editable ? `<div class="note blue">This attempt is <b>${esc(st)}</b>. Marks are read-only for reviewers now.</div>` : `<div class="note green">MCQ marks are pre-filled from the answer key — you can adjust them. Enter marks for the ${nWritten} written answer(s), then click <b>Send to CoE</b>.</div>`}
+  </div>
+  <div class="card"><div class="tabs" style="max-width:380px"><button class="on" id="tA">Answers &amp; marks</button><button id="tP">Proctoring (${r.events.filter(e => VTYPES.indexOf(e.type) >= 0).length} / ${r.snapshots.length})</button></div>
+    <div id="paneA">${r.questions.map((q, i) => answerCard(q, i, editable)).join('')}</div>
+    <div id="paneP" style="display:none">
+      <h3 style="font-size:15px;margin-top:8px">Activity log</h3>
+      <div>${r.events.map(e => `<div class="ev ${VTYPES.indexOf(e.type) >= 0 ? 'v' : ''}"><span class="muted" style="min-width:150px">${esc(e.time)}</span><b>${esc(e.type.replace(/_/g, ' '))}</b><span class="muted">${esc(e.detail)}</span></div>`).join('') || '<div class="empty">No events.</div>'}</div>
+      <h3 style="font-size:15px;margin-top:18px">Snapshots</h3>
+      ${r.snapshots.length ? `<div class="gal" id="gal">${r.snapshots.map(s => `<figure><img data-fid="${esc(s.fileId)}" alt=""><figcaption>${esc(s.time)} · ${esc(s.kind)}<br>${esc(s.reason)}</figcaption></figure>`).join('')}</div>
+        <button class="btn ghost mt" id="more">Load snapshots</button>` : '<div class="empty">No snapshots stored.</div>'}
+    </div>
+  </div>
+  <div class="card"><label class="f" style="margin-top:0">Remarks for the Controller of Examinations <span class="muted">(optional — e.g. concerns about proctoring warnings)</span></label>
+    <textarea class="in" id="rvNote" rows="3" ${editable ? '' : 'disabled'}>${esc(a.reviewerRemarks || '')}</textarea></div>
+  ${editable ? `<div class="sticky"><div class="row"><button class="btn ghost" id="bSave">Save draft</button><button class="btn green" id="bSend">Send to CoE →</button>
+    <span class="small muted" id="miss"></span></div><div class="err" id="ae"></div></div>` : ''}`;
+
+  $('#back').onclick = () => shell('attempts', arg.examId || a.examId);
+  $('#tA').onclick = () => { $('#tA').classList.add('on'); $('#tP').classList.remove('on'); $('#paneA').style.display = ''; $('#paneP').style.display = 'none'; };
+  $('#tP').onclick = () => { $('#tP').classList.add('on'); $('#tA').classList.remove('on'); $('#paneP').style.display = ''; $('#paneA').style.display = 'none'; if (!loadSnaps.done) loadSnaps(); };
+  if ($('#more')) $('#more').onclick = loadSnaps;
+  if ($('#gal')) $('#gal').addEventListener('click', ev => { if (ev.target.tagName === 'IMG' && ev.target.src) modal(`<img src="${ev.target.src}" style="width:100%;border-radius:10px"><div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn ghost" onclick="closeModal()">Close</button></div>`, true); });
+  const upd = () => { recalc(); const m = document.querySelectorAll('[data-mq]'); const miss = [...m].filter(x => x.value === '').length; if ($('#miss')) $('#miss').textContent = miss ? miss + ' question(s) still need marks' : 'All questions marked'; };
+  $('#paneA').addEventListener('input', upd);
+  upd();
+  loadSnaps.done = false;
+  const act = async (btn, fn, label) => { showErr('#ae'); busy(btn, true, label); try { await fn(); } catch (e) { showErr('#ae', e.message); busy(btn, false); } };
+  if ($('#bSave')) $('#bSave').onclick = () => act($('#bSave'), async () => {
+    await api('saveMarks', { attemptId: a.id, marks: collectMarks(), remarks: $('#rvNote').value, asReviewer: true });
+    toast('Draft saved'); busy($('#bSave'), false);
+  }, 'Saving…');
+  if ($('#bSend')) $('#bSend').onclick = async () => {
+    const t = $('#liveTot').textContent;
+    if (!(await confirmBox('Send to the Controller of Examinations?', `Total <b>${esc(t)} / ${esc(a.max)}</b>. After sending you can't change the marks unless the CoE returns the attempt to you.`, 'Send to CoE', 'green'))) return;
+    act($('#bSend'), async () => {
+      await api('saveMarks', { attemptId: a.id, marks: collectMarks(), remarks: $('#rvNote').value, send: true, asReviewer: true });
+      toast('Sent to the CoE'); shell('attempts', arg.examId || a.examId);
+    }, 'Sending…');
+  };
+}
+
+//@@MARKING@@
+
+/* ============================ LIVE PROCTOR ============================ */
+
+async function liveView(examId) {
+  const my = VIEW;
+  if (!EXAMS.length) { try { EXAMS = (await api('myExams')).exams; } catch (e) {} }
+  if (my !== VIEW) return;
+  const list = EXAMS.filter(e => e.live);
+  if (!examId) { const l = list.find(e => e.state === 'live'); examId = l ? l.id : ''; }
+  $('#view').innerHTML = `<div class="card"><div class="between"><div><div class="eyebrow">Live Proctor</div><h2 style="font-size:20px">Students writing your exams</h2>
+      <p class="small muted" style="margin:3px 0 0">Screens and webcams refresh every few seconds. Click a tile to enlarge it.</p></div>
+      <select class="in" id="lsel" style="max-width:380px"><option value="">Choose an exam…</option>${list.map(e => `<option value="${esc(e.id)}" ${e.id === examId ? 'selected' : ''}>${esc(e.title)} — ${e.state === 'live' ? 'LIVE' : e.state}</option>`).join('')}</select></div>
+    <div id="lstat" class="small muted mt"></div><div class="lgrid" id="lgrid"></div></div>`;
+  $('#lsel').onchange = () => shell('live', $('#lsel').value);
+  if (examId) livePoll(examId, my);
+  else $('#lgrid').innerHTML = `<div class="empty" style="grid-column:1/-1">${list.length ? 'Choose an exam above.' : 'None of your assigned exams use Live Proctor.'}</div>`;
+}
+
+//@@LIVEPOLL@@
+
+/* ============================ START ============================ */
+SESSION = loadSession();
+if (BOOT && BOOT.session) saveSession(BOOT.session);
+if (API_URL.indexOf('PASTE_') === 0) setTimeout(() => toast('Setup needed: paste the Apps Script /exec URL into API_URL.', 6000), 300);
+if (SESSION && SESSION.token) { api('me').then(r => { SESSION.user = r.user; saveSession(SESSION); shell('exams'); }).catch(e => { if (SESSION) authView(e.message, 'in'); }); $('#app').innerHTML = '<div class="spin"></div>'; }
+else authView('', 'in');
+</script>
+</body>
+</html>

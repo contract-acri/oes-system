@@ -1,0 +1,22 @@
+# Cloudflare Pages response headers for ACRI OES
+/*
+  X-Frame-Options: DENY
+  Content-Security-Policy: frame-ancestors 'none'
+  Permissions-Policy: camera=(self), microphone=(), display-capture=(self), fullscreen=(self), geolocation=(), payment=()
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Content-Type-Options: nosniff
+  Strict-Transport-Security: max-age=31536000
+
+/config.js
+  Cache-Control: no-cache
+
+/admin/*
+  X-Robots-Tag: noindex, nofollow
+/review/*
+  X-Robots-Tag: noindex, nofollow
+/control/*
+  X-Robots-Tag: noindex, nofollow
+/papers/*
+  X-Robots-Tag: noindex, nofollow
+/staff/*
+  X-Robots-Tag: noindex, nofollow

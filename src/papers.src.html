@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ACRI · Paper Setting</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<script src="/config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/*@@CSS@@*/
+.task{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:16px 0;border-top:1px solid var(--line)}
+.task:first-of-type{border-top:0}
+.prog{height:8px;border-radius:5px;background:#E7EEEA;overflow:hidden;margin-top:8px;max-width:420px}
+.prog i{display:block;height:100%;background:var(--green)}
+.mixrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.mixrow span{font-size:12.5px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--bg);color:var(--navy)}
+.mixrow span.ok{background:var(--green-bg);color:var(--green-d)}
+.qcard{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:12px;background:#fff}
+.qcard .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px}
+.qcard .txt{white-space:pre-wrap;color:var(--navy);font-weight:600}
+.qcard .o{padding:5px 10px;border-radius:8px;margin:3px 0;border:1px solid transparent;font-size:14px}
+.qcard .o.right{color:var(--green-d);font-weight:700;border-color:#BFE0A8;background:var(--green-bg)}
+.p-Draft{background:#EEF1F4;color:var(--muted)}.p-Approved{background:var(--green-bg);color:var(--green-d)}.p-Rejected{background:var(--red-bg);color:var(--red)}.p-Used{background:var(--navy);color:#fff}
+.diffsel{display:flex;gap:8px}
+.diffsel label{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:8px;text-align:center;font-weight:600;cursor:pointer;font-size:14px}
+.diffsel input{display:none}
+.diffsel input:checked+span{color:var(--green-d)}
+.diffsel label:has(input:checked){border-color:var(--green);background:var(--green-bg)}
+.conf{background:var(--navy);color:#CFE3F2;border-radius:12px;padding:12px 16px;font-size:13.5px;margin-bottom:16px}
+.conf b{color:#fff}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="ov" id="ov"><div class="box" id="ovbox"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+/* ==========================================================================
+   ACRI Online Examination — Paper setting (oes.acriindia.org.in/papers)
+   Paper setters write questions into a sealed pool; moderators check them.
+   ========================================================================== */
+const API_URL = window.ACRI_API_URL || 'PASTE_YOUR_WEB_APP_EXEC_URL_HERE';
+const EMBLEM = '__EMBLEM__';
+const PORTAL = 'papers';
+const PORTAL_NAME = 'Paper Setting';
+const PRISTINE = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+const BOOT = window.__ACRI_BOOT || null;
+const SKEY = 'acri_papers_session';
+const DIFFS = ['Easy', 'Medium', 'Hard'];
+
+//@@HELPERS@@
+
+//@@AUTH@@
+
+/* ============================ SHELL ============================ */
+
+function shell(view, arg) {
+  const role = SESSION.user.role;
+  if (view === 'exams') view = role === 'Moderator' ? 'mod' : 'tasks';
+  if (!$('#top')) {
+    $('#app').innerHTML = `<header class="top" id="top">${brand(PORTAL_NAME + (role === 'Moderator' ? ' · Moderator' : ' · Paper setter'))}
+      <div class="who"><span>${esc(SESSION.user.name)} · ${esc(SESSION.user.email)}</span>
+      <button class="btn ghost sm" id="out">Sign out</button></div></header>
+      <div class="stripe"></div><main class="wrap" id="view" style="max-width:1080px"></main>`;
+    $('#out').onclick = async () => { try { await api('logout'); } catch (e) {} saveSession(null); authView('', 'in'); };
+    if ($('#full')) $('#full').onclick = openFullWindow;
+  }
+  VIEW++;
+  window.scrollTo(0, 0);
+  $('#view').innerHTML = '<div class="spin"></div>';
+  ({ tasks: tasksView, task: taskView, mod: modView })[view](arg);
+}
+
+const CONF = `<div class="conf"><b>Confidential.</b> Questions you write go into a sealed pool. Each exam session gets a paper drawn at random from it, so nobody knows in advance which questions will be used — please keep it that way: don’t share questions or keep copies outside this site.</div>`;
+
+/* ============================ SETTER ============================ */
+
+let TASKS = [];
+async function tasksView() {
+  const my = VIEW;
+  let r;
+  try { r = await api('setterTasks'); } catch (e) { if (my === VIEW) $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  if (my !== VIEW) return;
+  TASKS = r.tasks;
+  $('#view').innerHTML = CONF + `<div class="card"><div class="eyebrow">Your assignments</div><h2 style="font-size:20px">Questions to set</h2>
+    ${TASKS.length ? TASKS.map((t, i) => {
+      const sub = t.questions.filter(q => q.status !== 'Draft' && q.status !== 'Rejected').length;
+      const rej = t.questions.filter(q => q.status === 'Rejected').length;
+      return `<div class="task"><div>
+        <div class="title">${esc(t.exam)}${t.courseCode ? ' <span class="small" style="color:var(--green-d)">' + esc(t.courseCode) + '</span>' : ''}</div>
+        <div class="small muted">${esc(t.section.name)} · ${t.section.type === 'MCQ' ? 'multiple choice' : 'written answer'} · ${t.section.marks} mark${t.section.marks == 1 ? "" : "s"} each${t.due ? ' · due <b style="color:' + (t.overdue ? 'var(--red)' : 'var(--navy)') + '">' + esc(t.due) + '</b>' : ''}</div>
+        <div class="prog"><i style="width:${Math.min(100, sub / Math.max(1, t.count) * 100)}%"></i></div>
+        <div class="small" style="margin-top:4px"><b>${sub}</b> of ${t.count} submitted · ${t.questions.filter(q => q.status === 'Draft').length} draft${rej ? ' · <b style="color:var(--red)">' + rej + ' sent back</b>' : ''}</div></div>
+        <button class="btn" data-t="${i}">Open</button></div>`;
+    }).join('') : '<div class="empty">No assignments yet. The Controller of Examinations will email you when you are asked to set questions.</div>'}</div>`;
+  $('#view').querySelectorAll('[data-t]').forEach(b => b.onclick = () => shell('task', TASKS[b.dataset.t].id));
+}
+
+let EDQ = null;
+async function taskView(id) {
+  const my = VIEW;
+  let r;
+  try { r = await api('setterTasks'); } catch (e) { if (my === VIEW) $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  if (my !== VIEW) return;
+  TASKS = r.tasks;
+  const t = TASKS.find(x => x.id === id);
+  if (!t) return shell('tasks');
+  const have = d => t.questions.filter(q => q.difficulty === d && q.status !== 'Rejected').length;
+  const drafts = t.questions.filter(q => q.status === 'Draft').length;
+  $('#view').innerHTML = `<div class="between" style="margin-bottom:14px"><button class="link" id="back">← All assignments</button>${drafts ? `<button class="btn green" id="subAll">Submit all ${drafts} draft(s)</button>` : ''}</div>
+    ${CONF}
+    <div class="card"><div class="eyebrow">${esc(t.exam)}${t.courseCode ? ' · ' + esc(t.courseCode) : ''}</div>
+      <h2 style="font-size:20px">${esc(t.section.name)} — ${t.count} ${t.section.type === 'MCQ' ? 'multiple-choice' : 'written'} questions, ${t.section.marks} mark${t.section.marks == 1 ? "" : "s"} each</h2>
+      <div class="mixrow">${DIFFS.map(d => `<span class="${have(d) >= t.target[d] ? 'ok' : ''}">${d}: ${have(d)} / ${t.target[d]}</span>`).join('')}<span>${t.due ? 'Due ' + esc(t.due) : 'No due date'}</span></div>
+      ${t.note ? `<div class="note blue">${esc(t.note)}</div>` : ''}
+      <p class="small muted" style="margin:10px 0 0">Aim for the difficulty mix shown, so every random paper is equally fair. ${t.section.type === 'MCQ' ? 'Give exactly one correct option.' : 'Add a model answer or marking scheme — reviewers use it to mark consistently.'}</p></div>
+    <div class="card" id="qform"></div>
+    <div class="card"><h2 style="font-size:18px">Your questions (${t.questions.length})</h2><div id="qlist2">${t.questions.length ? t.questions.map((q, i) => qCard(q, i, t)).join('') : '<div class="empty">No questions yet.</div>'}</div></div>`;
+  $('#back').onclick = () => shell('tasks');
+  if ($('#subAll')) $('#subAll').onclick = async () => {
+    if (!(await confirmBox('Submit all drafts?', drafts + ' draft question(s) will be submitted' + ' for the pool. You can still edit them until they are approved or used.', 'Submit', 'green'))) return;
+    try { const x = await api('setterSubmit', { assignId: t.id }); toast(x.submitted + ' question(s) submitted'); taskView(id); } catch (e) { toast(e.message); }
+  };
+  EDQ = { id: '', text: '', options: ['', '', '', ''], correct: null, difficulty: '', topic: '', modelAnswer: '' };
+  drawForm(t);
+  $('#qlist2').querySelectorAll('[data-ed]').forEach(b => b.onclick = () => { const q = t.questions[b.dataset.ed]; EDQ = JSON.parse(JSON.stringify(q)); if (!EDQ.options.length) EDQ.options = ['', '', '', '']; drawForm(t); $('#qform').scrollIntoView({ behavior: 'smooth' }); });
+  $('#qlist2').querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    if (!(await confirmBox('Delete this question?', 'It will be removed from the pool.', 'Delete', 'red'))) return;
+    try { await api('setterDelete', { id: t.questions[b.dataset.del].id }); toast('Deleted'); taskView(id); } catch (e) { toast(e.message); }
+  });
+}
+
+function qCard(q, i, t) {
+  return `<div class="qcard"><div class="meta"><b style="color:var(--blue)">Q${i + 1}</b><span class="pill p-${esc(q.status)}">${q.status === 'Submitted' ? 'Submitted' : q.status === 'Used' ? 'Used in an exam' : esc(q.status)}</span><span class="pill">${esc(q.difficulty)}</span>${q.topic ? `<span class="small muted">${esc(q.topic)}</span>` : ''}
+      <div class="spacer"></div>${q.locked ? '' : `<button class="btn ghost sm" data-ed="${i}">Edit</button><button class="btn ghost sm" data-del="${i}" style="color:var(--red)">Delete</button>`}</div>
+    ${q.status === 'Rejected' && q.note ? `<div class="note red" style="margin:4px 0 8px"><b>Moderator:</b> ${esc(q.note)}</div>` : q.note ? `<div class="small muted">Moderator: ${esc(q.note)}</div>` : ''}
+    <div class="txt">${esc(q.text)}</div>
+    ${t.section.type === 'MCQ' ? q.options.map((o, j) => `<div class="o ${j === q.correct ? 'right' : ''}">${String.fromCharCode(65 + j)}. ${esc(o)}${j === q.correct ? ' ✓' : ''}</div>`).join('') : ''}
+    ${q.modelAnswer ? `<div class="small muted" style="margin-top:6px;white-space:pre-wrap"><b>${t.section.type === 'MCQ' ? 'Explanation' : 'Model answer'}:</b> ${esc(q.modelAnswer)}</div>` : ''}</div>`;
+}
+
+function drawForm(t) {
+  const q = EDQ, mcq = t.section.type === 'MCQ';
+  $('#qform').innerHTML = `<div class="between"><h2 style="font-size:18px">${q.id ? 'Edit question' : 'New question'}</h2>${q.id ? '<button class="link small" id="newq">+ Start a new question instead</button>' : ''}</div>
+    <label class="f">Question</label><textarea class="in" id="qt" rows="4" placeholder="Write the question exactly as students should see it">${esc(q.text)}</textarea>
+    ${mcq ? `<label class="f">Options — select the correct one</label>
+      ${q.options.map((o, j) => `<div class="opt"><input type="radio" name="qc" value="${j}" ${q.correct === j ? 'checked' : ''}><span class="L">${String.fromCharCode(65 + j)}</span><input class="in" data-o="${j}" value="${esc(o)}" placeholder="Option ${String.fromCharCode(65 + j)}">${q.options.length > 2 ? `<button class="btn ghost sm" data-rmo="${j}">×</button>` : ''}</div>`).join('')}
+      ${q.options.length < 6 ? '<button class="link small mt" id="addo">+ Add option</button>' : ''}` : ''}
+    <div class="g2"><div><label class="f">Difficulty</label><div class="diffsel">${DIFFS.map(d => `<label><input type="radio" name="qd" value="${d}" ${q.difficulty === d ? 'checked' : ''}><span>${d}</span></label>`).join('')}</div></div>
+      <div><label class="f">Topic <span class="muted">(optional)</span></label><input class="in" id="qtop" value="${esc(q.topic || '')}" placeholder="e.g. Unit 2 — Demand and supply"></div></div>
+    <label class="f">${mcq ? 'Explanation <span class="muted">(optional)</span>' : 'Model answer / marking scheme'}</label><textarea class="in" id="qma" rows="${mcq ? 2 : 4}" placeholder="${mcq ? 'Why the correct option is right' : 'Key points and how marks are awarded'}">${esc(q.modelAnswer || '')}</textarea>
+    <div class="row mt"><button class="btn ghost" id="sv">Save draft</button><button class="btn green" id="svs">Save &amp; submit</button></div><div class="err" id="qe"></div>`;
+  const pull = () => {
+    q.text = $('#qt').value; q.topic = $('#qtop').value; q.modelAnswer = $('#qma').value;
+    const d = document.querySelector('input[name=qd]:checked'); q.difficulty = d ? d.value : '';
+    if (mcq) { document.querySelectorAll('#qform [data-o]').forEach(i => q.options[i.dataset.o] = i.value); const c = document.querySelector('input[name=qc]:checked'); q.correct = c ? Number(c.value) : null; }
+  };
+  if ($('#newq')) $('#newq').onclick = () => { EDQ = { id: '', text: '', options: ['', '', '', ''], correct: null, difficulty: '', topic: '', modelAnswer: '' }; drawForm(t); };
+  if ($('#addo')) $('#addo').onclick = () => { pull(); q.options.push(''); drawForm(t); };
+  document.querySelectorAll('#qform [data-rmo]').forEach(b => b.onclick = () => { pull(); const j = +b.dataset.rmo; q.options.splice(j, 1); if (q.correct === j) q.correct = null; else if (q.correct > j) q.correct--; drawForm(t); });
+  const save = async (submit, btn) => {
+    pull(); showErr('#qe');
+    busy(btn, true, 'Saving…');
+    try {
+      await api('setterSave', { assignId: t.id, submit, question: { id: q.id, text: q.text, options: mcq ? q.options : [], correct: q.correct, difficulty: q.difficulty, topic: q.topic, modelAnswer: q.modelAnswer } });
+      toast(submit ? 'Saved and submitted' : 'Draft saved');
+      taskView(t.id);
+    } catch (e) { showErr('#qe', e.message); busy(btn, false); }
+  };
+  $('#sv').onclick = () => save(false, $('#sv'));
+  $('#svs').onclick = () => save(true, $('#svs'));
+}
+
+/* ============================ MODERATOR ============================ */
+
+let MODG = [], MOD_FILTER = 'Submitted';
+async function modView() {
+  const my = VIEW;
+  let r;
+  try { r = await api('modQueue'); } catch (e) { if (my === VIEW) $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  if (my !== VIEW) return;
+  MODG = r.groups;
+  const draw = () => {
+    $('#view').innerHTML = CONF.replace('Questions you write go', 'Questions you review go') + (MODG.length ? MODG.map((g, gi) => {
+      const list = g.questions.filter(q => MOD_FILTER === 'All' || q.status === MOD_FILTER);
+      const cnt = s => g.questions.filter(q => q.status === s).length;
+      return `<div class="card"><div class="eyebrow">${esc(g.courseCode || 'Exam')}</div><h2 style="font-size:20px">${esc(g.exam)}</h2>
+        <p class="small muted" style="margin:4px 0 0">Setters are shown as numbers so you judge the question, not the person. You never see which questions end up in which paper.</p>
+        <div class="filters">${['Submitted', 'Approved', 'Rejected', 'All'].map(s => `<button class="${MOD_FILTER === s ? 'on' : ''}" data-fl="${s}">${s === 'Submitted' ? 'To review' : s} · ${s === 'All' ? g.questions.length : cnt(s)}</button>`).join('')}</div>
+        ${list.length ? list.map(q => {
+          const sec = g.sections.find(s => s.key === q.section) || {};
+          return `<div class="qcard"><div class="meta"><b style="color:var(--blue)">${esc(sec.name || q.section)}</b><span class="pill">${sec.marks || ''} marks</span><span class="pill p-${esc(q.status)}">${esc(q.status === 'Submitted' ? 'To review' : q.status)}</span><span class="small muted">${esc(q.setter)}${q.topic ? ' · ' + esc(q.topic) : ''}</span></div>
+            <div class="txt">${esc(q.text)}</div>
+            ${q.type === 'MCQ' ? q.options.map((o, j) => `<div class="o ${j === q.correct ? 'right' : ''}">${String.fromCharCode(65 + j)}. ${esc(o)}${j === q.correct ? ' ✓ answer key' : ''}</div>`).join('') : ''}
+            ${q.modelAnswer ? `<div class="small muted" style="margin-top:6px;white-space:pre-wrap"><b>${q.type === 'MCQ' ? 'Explanation' : 'Model answer'}:</b> ${esc(q.modelAnswer)}</div>` : ''}
+            ${q.note ? `<div class="small" style="margin-top:6px">Your note: ${esc(q.note)}</div>` : ''}
+            <div class="row mt"><span class="small" style="font-weight:600">Difficulty</span><select class="pri" data-df="${esc(q.id)}">${DIFFS.map(d => `<option ${d === q.difficulty ? 'selected' : ''}>${d}</option>`).join('')}</select>
+              <div class="spacer"></div><button class="btn red sm" data-rj="${esc(q.id)}">Send back</button><button class="btn green sm" data-ap="${esc(q.id)}">Approve</button></div></div>`;
+        }).join('') : '<div class="empty" style="padding:18px">Nothing here.</div>'}</div>`;
+    }).join('') : '<div class="card"><div class="empty">No exams are assigned to you for moderation yet.</div></div>');
+    $('#view').querySelectorAll('[data-fl]').forEach(b => b.onclick = () => { MOD_FILTER = b.dataset.fl; draw(); });
+    const decide = async (id, decision, note, btn) => {
+      const diff = document.querySelector(`[data-df="${id}"]`);
+      busy(btn, true, '…');
+      try { await api('modDecide', { id, decision, note, difficulty: diff ? diff.value : '' }); toast(decision === 'Approve' ? 'Approved' : 'Sent back to the setter'); modView(); }
+      catch (e) { toast(e.message); busy(btn, false); }
+    };
+    $('#view').querySelectorAll('[data-ap]').forEach(b => b.onclick = () => decide(b.dataset.ap, 'Approve', '', b));
+    $('#view').querySelectorAll('[data-rj]').forEach(b => b.onclick = async () => {
+      const note = await confirmBox('Send back to the setter', 'Tell the setter what to fix (they see this note, not your name).', 'Send back', 'red', true, 'e.g. Option C is also correct; reword the question.');
+      if (note === null) return;
+      decide(b.dataset.rj, 'Reject', note, b);
+    });
+  };
+  draw();
+}
+
+/* ============================ START ============================ */
+SESSION = loadSession();
+if (BOOT && BOOT.session) saveSession(BOOT.session);
+if (API_URL.indexOf('PASTE_') === 0) setTimeout(() => toast('Setup needed: paste the Apps Script /exec URL into API_URL.', 6000), 300);
+if (SESSION && SESSION.token) {
+  api('me').then(r => {
+    if (r.user.role !== 'Setter' && r.user.role !== 'Moderator') { saveSession(null); return authView('This site is for paper setters and moderators.', 'in'); }
+    SESSION.user = r.user; saveSession(SESSION); shell('exams');
+  }).catch(e => { if (SESSION) authView(e.message, 'in'); });
+  $('#app').innerHTML = '<div class="spin"></div>';
+} else authView('', 'in');
+</script>
+</body>
+</html>

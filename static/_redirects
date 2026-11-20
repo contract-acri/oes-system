@@ -1,0 +1,11 @@
+# Short and old names for each portal
+/coe        /admin/   301
+/coe/*      /admin/   301
+/exam       /         301
+/exam/*     /         301
+/reviewer   /review/  301
+/reviewers  /review/  301
+/setter     /papers/  301
+/setters    /papers/  301
+/moderator  /papers/  301
+/master     /control/ 301

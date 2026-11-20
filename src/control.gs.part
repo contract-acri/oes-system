@@ -1,0 +1,536 @@
+/* =========================================================================
+ *  MASTER CONTROL — load monitoring, auto pause/resume, stress test, planning
+ *  (www.control.exam.acriindia.org)
+ * ========================================================================= */
+
+const PAUSED_W = 1 / 30;          // requests per second from a paused student (slow ticks only)
+const DEFAULT_CAPACITY_RPS = 12;  // used until a stress test has been run
+const PRIORITIES = ['High', 'Normal', 'Low', 'Never pause'];
+
+/* ---- request metrics (sharded cache buckets of 10 seconds) ---- */
+
+function metric_(action, ms, ok, lat, fails) {
+  try {
+    const c = cache_();
+    const k = 'mx' + Math.floor(Date.now() / 10000) + '_' + Math.floor(Math.random() * 4);
+    const o = JSON.parse(c.get(k) || '{"n":0,"ms":0,"e":0,"l":0,"ln":0,"f":0,"s":0}');
+    o.n++; o.ms += ms;
+    if (!ok) o.e++;
+    if (lat > 0 && lat < 120000) { o.l += lat; o.ln++; }
+    if (fails > 0 && fails < 100) o.f += fails;
+    if (action === 'stressPing') o.s++;
+    c.put(k, JSON.stringify(o), 300);
+  } catch (e) {}
+}
+
+function metrics_(sec) {
+  const now = Date.now(), first = Math.floor((now - sec * 1000) / 10000) + 1, last = Math.floor(now / 10000);
+  const keys = [];
+  for (let b = first; b <= last; b++) for (let i = 0; i < 4; i++) keys.push('mx' + b + '_' + i);
+  const got = cache_().getAll(keys);
+  const t = { n: 0, ms: 0, e: 0, l: 0, ln: 0, f: 0, s: 0 };
+  Object.keys(got).forEach(k => { try { const o = JSON.parse(got[k]); Object.keys(t).forEach(x => t[x] += Number(o[x]) || 0); } catch (e) {} });
+  const span = Math.max(10, (last - first + 1) * 10);
+  return {
+    n: t.n, rps: Math.round(t.n / span * 100) / 100, avgMs: t.n ? Math.round(t.ms / t.n) : 0,
+    errRate: t.n ? Math.round((t.e + t.f) / (t.n + t.f) * 1000) / 1000 : 0,
+    cliLat: t.ln ? Math.round(t.l / t.ln) : 0, cliN: t.ln, stress: t.s
+  };
+}
+
+/* ---- capacity model ---- */
+
+function capacity_(s) {
+  s = s || settings_();
+  const measured = Number(s.CAPACITY_RPS) || 0;
+  const raw = measured || DEFAULT_CAPACITY_RPS;
+  const safety = Math.min(100, Math.max(30, Number(s.CAPACITY_SAFETY) || 80)) / 100;
+  const usable = raw * safety;
+  const wl = weight_({ Camera: 'Yes', Screen: 'Yes', LiveProctor: 'Yes' }, s);
+  const ws = weight_({ Camera: 'Yes', Screen: 'Yes', LiveProctor: 'No' }, s);
+  const wb = weight_({ Camera: 'No', Screen: 'No', LiveProctor: 'No' }, s);
+  return {
+    raw: raw, usable: Math.round(usable * 100) / 100, safety: Math.round(safety * 100), estimated: !measured,
+    testedAt: String(s.CAPACITY_TESTED_AT || ''),
+    students: { live: Math.floor(usable / wl), proctored: Math.floor(usable / ws), basic: Math.floor(usable / wb) },
+    weights: { live: wl, proctored: ws, basic: wb }
+  };
+}
+
+/** Average requests per second one writing student creates for this exam's proctoring set-up. */
+function weight_(ex, s) {
+  s = s || settings_();
+  const cam = yes_(ex.Camera), scr = yes_(ex.Screen), live = yes_(ex.LiveProctor) && (cam || scr);
+  const tick = live ? Math.max(3, Number(s.LIVE_SECONDS) || 5) : 20;
+  const snap = (cam || scr) ? 4 / Math.max(15, Number(s.SNAPSHOT_SECONDS) || 60) : 0;   // a snapshot costs ~4 ticks
+  return Math.round((1 / tick + snap + 0.01) * 10000) / 10000;
+}
+
+function ctlCfg_(s) {
+  s = s || settings_();
+  const n = (k, d, lo, hi) => { const v = Number(s[k]); return isNaN(v) || s[k] === '' ? d : Math.min(hi, Math.max(lo, v)); };
+  return {
+    mode: lower_(s.CONTROL_MODE || 'Auto') === 'manual' ? 'Manual' : 'Auto',
+    pauseAt: n('PAUSE_AT_PCT', 100, 50, 150), target: n('TARGET_PCT', 85, 30, 100), resumeBelow: n('RESUME_BELOW_PCT', 70, 20, 95),
+    bufferMin: n('RESUME_BUFFER_MIN', 2, 0, 30), slowMs: n('SLOW_MS', 4000, 1000, 30000), safety: n('CAPACITY_SAFETY', 80, 30, 100)
+  };
+}
+
+function priority_(ex) { const p = String((ex && ex.Priority) || 'Normal'); return PRIORITIES.indexOf(p) >= 0 ? p : 'Normal'; }
+function expected_(ex, regCount) { return Number(ex.ExpectedCandidates) || regCount || 0; }
+function isPaused_(a) { return !!toDate_(a.PausedAt); }
+
+/* ---- pause / resume / extend (mutate attempt objects; applyAtts_ writes them) ---- */
+
+const ATT_CTL_COLS = ['PausedAt', 'PausedReason', 'ResumeEta', 'Deadline', 'PausedSecTotal', 'ExtendedMin', 'Notice'];
+
+function pauseAtt_(a, reason, etaMs, now) {
+  a.PausedAt = new Date(now);
+  a.PausedReason = String(reason).slice(0, 300);
+  a.ResumeEta = etaMs ? new Date(etaMs) : '';
+}
+
+function resumeAtt_(a, now, bufferMin) {
+  const pausedMs = Math.max(0, now - ms_(a.PausedAt));
+  const add = pausedMs + bufferMin * 60000;
+  a.Deadline = new Date(ms_(a.Deadline) + add);
+  a.PausedSecTotal = (Number(a.PausedSecTotal) || 0) + Math.round(pausedMs / 1000);
+  a.ExtendedMin = Math.round(((Number(a.ExtendedMin) || 0) + add / 60000) * 10) / 10;
+  a.PausedAt = ''; a.PausedReason = ''; a.ResumeEta = '';
+  const mins = Math.max(1, Math.round(add / 60000));
+  a.Notice = JSON.stringify({ id: newToken_().slice(0, 8), text: 'Your exam has resumed. ' + mins + ' minute' + (mins === 1 ? ' was' : 's were') + ' added to your time.' });
+  return add;
+}
+
+function extendAtt_(a, minutes) {
+  a.Deadline = new Date(ms_(a.Deadline) + minutes * 60000);
+  a.ExtendedMin = Math.round(((Number(a.ExtendedMin) || 0) + minutes) * 10) / 10;
+  a.Notice = JSON.stringify({ id: newToken_().slice(0, 8), text: minutes + ' minute' + (minutes === 1 ? ' was' : 's were') + ' added to your exam time by the Controller of Examinations.' });
+}
+
+/** Write changed attempts back (column writes, inside the script lock) and refresh their cache entries. */
+function applyAtts_(all, changed) {
+  if (!changed.length) return;
+  writeCols_('Attempts', all, ATT_CTL_COLS);
+  const o = {};
+  changed.forEach(a => o['att_' + a.AttemptID] = JSON.stringify(attCacheObj_(a)));
+  cache_().putAll(o, 21600);
+}
+
+function writeCols_(name, rows, cols) {
+  const sh = sh_(name);
+  const h = head_(sh);
+  rows.forEach((r, i) => { if (r._row !== i + 2) throw new Error('Row order mismatch in ' + name); });
+  cols.forEach(col => {
+    const j = h.indexOf(col);
+    if (j < 0 || !rows.length) return;
+    sh.getRange(2, j + 1, rows.length, 1).setValues(rows.map(r => [cell_(r[col])]));
+  });
+}
+
+function ctlLog_(actor, action, scope, detail) {
+  try { append_('ControlLog', { Time: new Date(), Actor: actor, Action: action, Scope: scope || '', Detail: String(detail || '').slice(0, 1000) }); } catch (e) {}
+}
+
+/* ---- the controller ---- */
+
+/** Time-driven trigger (every minute). Sleeps cheaply when no exam is running. */
+function controlLoop() {
+  const c = cache_();
+  if (Date.now() < Number(c.get('ctl_sleep_until') || 0)) return;
+  try {
+    const st = controlRun_('Auto', true);
+    if (!st.load.active && !st.load.paused && !st.exams.some(e => e.state === 'live')) {
+      const nextStart = rows_('Exams').filter(e => e.Status === 'On' && ms_(e.StartIST) > Date.now()).map(e => ms_(e.StartIST)).sort((a, b) => a - b)[0];
+      const until = Math.min(nextStart ? nextStart - 120000 : Infinity, Date.now() + 30 * 60000);
+      if (until > Date.now()) c.put('ctl_sleep_until', String(until), 3600);
+    }
+  } catch (e) { console.error('controlLoop', e); }
+}
+
+function controlRun_(actor, force) {
+  const c = cache_();
+  if (!force) {
+    const last = Number(c.get('ctl_last') || 0);
+    const cached = c.get('ctl_state');
+    if (cached && Date.now() - last < 8000) return JSON.parse(cached);
+  }
+  return withLock_(() => {
+    const now = Date.now();
+    c.put('ctl_last', String(now), 600);
+    const s = settings_(), cfg = ctlCfg_(s), cap = capacity_(s);
+    const exams = rows_('Exams'), byId = {}, W = {};
+    exams.forEach(e => { byId[e.ExamID] = e; W[e.ExamID] = weight_(e, s); });
+    const all = rows_('Attempts');
+    const live = all.filter(a => a.Status === ST.IP);
+    const wOf = a => isPaused_(a) ? PAUSED_W : (W[a.ExamID] || 0.3);
+    const loadNow = () => live.reduce((t, a) => t + wOf(a), 0);
+    const m = metrics_(60);
+    const stress = !!c.get('stress_active');
+    const healthBad = !stress && ((m.cliN >= 5 && m.cliLat > cfg.slowMs) || (m.n >= 20 && m.errRate > 0.05));
+    const changed = [], done = { paused: {}, resumed: {} };
+    const note = (kind, a) => { done[kind][a.ExamID] = (done[kind][a.ExamID] || 0) + 1; if (changed.indexOf(a) < 0) changed.push(a); };
+
+    // 1. Timed manual pauses whose resume time has come (in either mode).
+    live.filter(a => isPaused_(a) && /^Manual/.test(a.PausedReason) && toDate_(a.ResumeEta) && ms_(a.ResumeEta) <= now)
+      .forEach(a => { resumeAtt_(a, now, cfg.bufferMin); note('resumed', a); });
+
+    // 2. Automatic load shedding and recovery.
+    let util = loadNow() / cap.usable;
+    if (cfg.mode === 'Auto' && !stress) {
+      if (util * 100 > cfg.pauseAt || healthBad) {
+        const goal = (healthBad && util * 100 <= cfg.pauseAt) ? loadNow() * 0.75 : cap.usable * cfg.target / 100;
+        const rank = { Low: 0, Normal: 1, High: 2 };
+        const cands = live.filter(a => !isPaused_(a) && priority_(byId[a.ExamID]) !== 'Never pause' && ms_(a.Deadline) - now > 5 * 60000)
+          .sort((x, y) => (rank[priority_(byId[x.ExamID])] - rank[priority_(byId[y.ExamID])]) || (ms_(y.StartedAt) - ms_(x.StartedAt)));
+        for (let i = 0; i < cands.length && loadNow() > goal; i++) { pauseAtt_(cands[i], 'Auto: system at capacity', 0, now); note('paused', cands[i]); }
+        c.remove('ctl_low_since');
+      } else {
+        const queue = live.filter(a => isPaused_(a) && /^Auto/.test(a.PausedReason)).sort((x, y) => ms_(x.PausedAt) - ms_(y.PausedAt));
+        if (queue.length && util * 100 < cfg.resumeBelow) {
+          const since = Number(c.get('ctl_low_since') || 0);
+          if (!since) c.put('ctl_low_since', String(now), 600);
+          else if (now - since >= 45000) {
+            for (const a of queue) {
+              if (loadNow() - PAUSED_W + (W[a.ExamID] || 0.3) > cap.usable * cfg.target / 100) break;
+              resumeAtt_(a, now, cfg.bufferMin); note('resumed', a);
+            }
+            c.remove('ctl_low_since');
+          }
+        } else c.remove('ctl_low_since');
+      }
+    }
+
+    // 3. Expected resume times for the waiting queue (when running students finish).
+    const running = live.filter(a => !isPaused_(a)).map(a => ({ t: ms_(a.Deadline), w: W[a.ExamID] || 0.3 })).sort((x, y) => x.t - y.t);
+    let head = cap.usable * cfg.target / 100 - loadNow(), i = 0, lastT = now;
+    live.filter(a => isPaused_(a) && !(/^Manual/.test(a.PausedReason) && toDate_(a.ResumeEta)))
+      .sort((x, y) => ms_(x.PausedAt) - ms_(y.PausedAt)).forEach(a => {
+        const need = (W[a.ExamID] || 0.3) - PAUSED_W;
+        while (head < need && i < running.length) { head += running[i].w; lastT = running[i].t; i++; }
+        let eta = 0;
+        if (head >= need) { eta = Math.max(now + 120000, lastT + 90000); head -= need; }
+        const cur = ms_(a.ResumeEta);
+        if (Math.abs(cur - eta) > 60000 || (!eta && cur)) { a.ResumeEta = eta ? new Date(eta) : ''; if (changed.indexOf(a) < 0) changed.push(a); }
+      });
+
+    applyAtts_(all, changed);
+    Object.keys(done.paused).forEach(id => ctlLog_(actor, 'AUTO_PAUSE', id, done.paused[id] + ' student(s) paused: system at ' + Math.round(util * 100) + '% of capacity' + (healthBad ? ', slow responses' : '')));
+    Object.keys(done.resumed).forEach(id => ctlLog_(actor, 'RESUME', id, done.resumed[id] + ' student(s) resumed; paused time added back + ' + cfg.bufferMin + ' min'));
+    if (changed.length) c.remove('ctl_sleep_until');
+
+    util = loadNow() / cap.usable;
+    const full = cfg.mode === 'Auto' && !stress && (util * 100 > cfg.pauseAt || healthBad || live.some(a => isPaused_(a) && /^Auto/.test(a.PausedReason)));
+    c.put('ctl_admit', full ? '0' : '1', 300);
+
+    const st = controlState_(cfg, cap, exams, all, live, W, m, healthBad, stress, util, now);
+    // history (one point per ≥10 s)
+    let hist = [];
+    try { hist = JSON.parse(c.get('ctl_hist') || '[]'); } catch (e) {}
+    if (!hist.length || now - hist[hist.length - 1].t >= 10000) {
+      hist.push({ t: now, u: Math.round(util * 100), a: st.load.active, p: st.load.paused, l: m.cliLat, ms: m.avgMs });
+      hist = hist.filter(h => now - h.t < 3 * 3600000).slice(-360);
+      c.put('ctl_hist', JSON.stringify(hist), 21600);
+    }
+    st.hist = hist;
+    c.put('ctl_state', JSON.stringify(st), 60);
+    return st;
+  });
+}
+
+function controlState_(cfg, cap, exams, all, live, W, m, healthBad, stress, util, now) {
+  const reg = {};
+  rows_('Candidates').forEach(cd => reg[cd.ExamID] = (reg[cd.ExamID] || 0) + 1);
+  const seenKeys = live.map(a => 'seen_' + a.AttemptID);
+  const seen = seenKeys.length ? cache_().getAll(seenKeys) : {};
+  const paused = live.filter(isPaused_);
+  const status = (healthBad || util * 100 > cfg.pauseAt) ? 'Overloaded' : util * 100 > cfg.target ? 'Busy' : paused.length ? 'Recovering' : live.length ? 'Normal' : 'Idle';
+  const relevant = exams.filter(e => {
+    const s0 = ms_(e.StartIST), e0 = ms_(e.EndIST);
+    return live.some(a => a.ExamID === e.ExamID) || (e0 > now - 3600000 && s0 < now + 24 * 3600000);
+  });
+  const examOut = relevant.map(e => {
+    const mine = live.filter(a => a.ExamID === e.ExamID);
+    const p = mine.filter(isPaused_).length, act = mine.length - p;
+    return {
+      id: e.ExamID, title: e.Title, code: String(e.AccessCode), state: examState_(e), status: e.Status,
+      start: ms_(e.StartIST), end: ms_(e.EndIST), startIST: ist_(toDate_(e.StartIST), 'dd MMM, hh:mm a'), endIST: ist_(toDate_(e.EndIST), 'dd MMM, hh:mm a'),
+      expected: Number(e.ExpectedCandidates) || 0, registered: reg[e.ExamID] || 0, active: act, paused: p,
+      weight: W[e.ExamID], loadPct: Math.round((act * W[e.ExamID] + p * PAUSED_W) / cap.usable * 100),
+      priority: priority_(e), hold: yes_(e.Hold), live: yes_(e.LiveProctor), duration: Number(e.DurationMin) || 0
+    };
+  }).sort((x, y) => (y.active + y.paused) - (x.active + x.paused) || x.start - y.start);
+
+  // Upcoming 7 days: projected load at each exam's start.
+  const horizon = exams.filter(e => ms_(e.EndIST) > now && ms_(e.StartIST) < now + 7 * 24 * 3600000);
+  const upcoming = horizon.map(e => {
+    const t = Math.max(now, ms_(e.StartIST));
+    const at = horizon.filter(o => ms_(o.StartIST) <= t + 60000 && ms_(o.EndIST) > t);
+    const proj = at.reduce((sum, o) => sum + expected_(o, reg[o.ExamID]) * (W[o.ExamID] || 0.3), 0);
+    const pct = Math.round(proj / cap.usable * 100);
+    return {
+      id: e.ExamID, title: e.Title, startIST: ist_(toDate_(e.StartIST), 'dd MMM, hh:mm a'), endIST: ist_(toDate_(e.EndIST), 'dd MMM, hh:mm a'),
+      start: ms_(e.StartIST), expected: expected_(e, reg[e.ExamID]), expectedSet: !!Number(e.ExpectedCandidates), overlapping: at.length - 1,
+      pct: pct, verdict: pct <= cfg.target ? 'Fits' : pct <= cfg.pauseAt ? 'Tight' : 'Over capacity', status: e.Status
+    };
+  }).sort((x, y) => x.start - y.start);
+
+  return {
+    now: now, mode: cfg.mode, cfg: cfg, capacity: cap, stress: stress, status: status,
+    load: { rps: Math.round(live.reduce((t, a) => t + (isPaused_(a) ? PAUSED_W : (W[a.ExamID] || 0.3)), 0) * 100) / 100, util: Math.round(util * 100), active: live.length - paused.length, paused: paused.length, healthBad: healthBad,
+      connected: live.filter(a => now - Number(seen['seen_' + a.AttemptID] || 0) < 45000).length },
+    metrics: m, exams: examOut, upcoming: upcoming, log: ctlLogRows_(30)
+  };
+}
+
+function ctlLogRows_(n) {
+  const sh = sh_('ControlLog');
+  const lr = sh.getLastRow();
+  if (lr < 2) return [];
+  const from = Math.max(2, lr - n + 1);
+  const h = head_(sh);
+  return sh.getRange(from, 1, lr - from + 1, h.length).getValues().reverse().map(r => {
+    const o = {}; h.forEach((k, j) => o[k] = r[j]);
+    return { time: ist_(toDate_(o.Time), 'dd MMM, hh:mm:ss a'), actor: o.Actor, action: o.Action, scope: o.Scope, detail: o.Detail };
+  });
+}
+
+/* ---- Master Control API (CoE accounts) ---- */
+
+function r_controlState(req) { staff_(req, ['CoE']); const st = controlRun_('Control page', !!req.force); return { state: st }; }
+
+function r_controlSettings(req) {
+  const u = staff_(req, ['CoE']);
+  const v = req.values || {};
+  const map = { mode: 'CONTROL_MODE', pauseAt: 'PAUSE_AT_PCT', target: 'TARGET_PCT', resumeBelow: 'RESUME_BELOW_PCT', bufferMin: 'RESUME_BUFFER_MIN', slowMs: 'SLOW_MS', safety: 'CAPACITY_SAFETY' };
+  Object.keys(map).forEach(k => {
+    if (v[k] === undefined) return;
+    if (k === 'mode') return setSetting_(map[k], v[k] === 'Manual' ? 'Manual' : 'Auto');
+    const n = Number(v[k]);
+    if (isNaN(n)) fail_('Settings must be numbers.');
+    setSetting_(map[k], String(n));
+  });
+  const cfg = ctlCfg_();
+  if (cfg.target >= cfg.pauseAt) fail_('"Target after pausing" must be lower than "Pause at".');
+  if (cfg.resumeBelow >= cfg.target) fail_('"Resume below" must be lower than "Target after pausing".');
+  ctlLog_(u.email, 'SETTINGS', '', JSON.stringify(v));
+  cache_().remove('ctl_last');
+  return { cfg: cfg };
+}
+
+function r_controlPriority(req) {
+  const u = staff_(req, ['CoE']);
+  if (PRIORITIES.indexOf(req.priority) < 0) fail_('Unknown priority.');
+  const row = findRow_('Exams', 'ExamID', req.examId);
+  if (!row) fail_('Exam not found.');
+  update_('Exams', row, { Priority: req.priority });
+  ctlLog_(u.email, 'PRIORITY', req.examId, req.priority);
+  cache_().remove('ctl_last');
+  return {};
+}
+
+/** Pause / resume / extend. scope: {examId} or {attemptId} or {all:true}. */
+function r_controlAction(req) {
+  const u = staff_(req, ['CoE']);
+  const op = req.op;
+  if (['pause', 'resume', 'extend'].indexOf(op) < 0) fail_('Unknown action.');
+  const minutes = Number(req.minutes) || 0;
+  if (op === 'extend' && !(minutes > 0 && minutes <= 240)) fail_('Extension must be between 1 and 240 minutes.');
+  return withLock_(() => {
+    const now = Date.now(), cfg = ctlCfg_();
+    const all = rows_('Attempts');
+    let pick = all.filter(a => a.Status === ST.IP);
+    if (req.attemptId) pick = pick.filter(a => a.AttemptID === req.attemptId);
+    else if (req.examId) pick = pick.filter(a => a.ExamID === req.examId);
+    else if (!req.all) fail_('Choose an exam or a student.');
+    const changed = [];
+    pick.forEach(a => {
+      if (op === 'pause' && !isPaused_(a)) {
+        const msg = String(req.message || '').trim();
+        pauseAtt_(a, 'Manual' + (msg ? ': ' + msg : ''), minutes ? now + minutes * 60000 : 0, now); changed.push(a);
+      } else if (op === 'resume' && isPaused_(a)) { resumeAtt_(a, now, cfg.bufferMin); changed.push(a); }
+      else if (op === 'extend') { extendAtt_(a, minutes); changed.push(a); }
+    });
+    applyAtts_(all, changed);
+    if (req.examId && (op === 'pause' || op === 'resume')) {
+      const row = findRow_('Exams', 'ExamID', req.examId);
+      if (row) update_('Exams', row, { Hold: op === 'pause' ? 'Yes' : '' });
+    }
+    if (req.all && op === 'resume') {
+      const sh = sh_('Exams'), j = head_(sh).indexOf('Hold') + 1, lr = sh.getLastRow();
+      if (j && lr > 1) sh.getRange(2, j, lr - 1, 1).clearContent();
+    }
+    ctlLog_(u.email, op.toUpperCase(), req.attemptId || req.examId || 'All exams',
+      changed.length + ' student(s)' + (op === 'extend' ? ' +' + minutes + ' min' : '') + (op === 'pause' && minutes ? ' for ' + minutes + ' min' : '') + (req.message ? ' — ' + req.message : ''));
+    const c = cache_(); c.remove('ctl_last'); c.remove('ctl_sleep_until');
+    return { changed: changed.length };
+  });
+}
+
+function r_controlAttempts(req) {
+  staff_(req, ['CoE']);
+  const ex = exam_(req.examId);
+  if (!ex) fail_('Exam not found.');
+  const atts = rows_('Attempts').filter(a => a.ExamID === ex.ExamID && a.Status === ST.IP);
+  const keys = [];
+  atts.forEach(a => keys.push('seen_' + a.AttemptID, 'viol_' + a.AttemptID));
+  const c = keys.length ? cache_().getAll(keys) : {};
+  return {
+    attempts: atts.map(a => ({
+      id: a.AttemptID, name: a.Name, email: a.Email, rollNo: String(a.RollNo || ''), started: ist_(toDate_(a.StartedAt), 'hh:mm a'),
+      deadline: ms_(a.Deadline), pausedAt: ms_(a.PausedAt), eta: ms_(a.ResumeEta), reason: String(a.PausedReason || ''),
+      seenAt: Number(c['seen_' + a.AttemptID] || 0), violations: Number(c['viol_' + a.AttemptID] || a.Violations || 0),
+      extendedMin: Number(a.ExtendedMin) || 0
+    })).sort((x, y) => x.deadline - y.deadline)
+  };
+}
+
+/* ---- stress test ---- */
+
+function r_stressStart(req) {
+  const u = staff_(req, ['CoE']);
+  const inProgress = rows_('Attempts').filter(a => a.Status === ST.IP).length;
+  if (inProgress && !req.force) return { needsForce: true, inProgress: inProgress };
+  const token = newToken_(), c = cache_();
+  c.put('stress_' + token, u.email, 1800);
+  c.put('stress_active', '1', 1800);
+  ctlLog_(u.email, 'STRESS_START', '', 'Max ' + (req.maxRps || '?') + ' req/s' + (inProgress ? ', ' + inProgress + ' student(s) writing' : ''));
+  return { token: token };
+}
+
+/** One simulated student request: same cache traffic as a live tick, sometimes a sheet read. */
+function r_stressPing(req) {
+  const c = cache_();
+  if (!c.get('stress_' + String(req.st || ''))) fail_('Stress test is not running.');
+  const k = Math.floor(Math.random() * 20);
+  c.get('att_stress' + k);
+  c.put('seen_stress' + k, String(Date.now()), 120);
+  if (req.payload) c.put('stp_' + k, String(req.payload).slice(0, 95000), 120);
+  if (req.sheet) sh_('Attempts').getRange(1, 1, 1, 5).getValues();
+  return {};
+}
+
+function r_stressEnd(req) {
+  const u = staff_(req, ['CoE']);
+  const c = cache_();
+  if (req.st) c.remove('stress_' + req.st);
+  c.remove('stress_active');
+  const r = req.result || {};
+  let saved = false;
+  if (req.save && Number(r.rps) > 0) {
+    setSetting_('CAPACITY_RPS', String(Math.round(Number(r.rps) * 10) / 10));
+    setSetting_('CAPACITY_TESTED_AT', ist_(new Date()) + ' IST');
+    saved = true;
+  }
+  ctlLog_(u.email, 'STRESS_RESULT', '', 'Sustained ' + (r.rps || 0) + ' req/s, p95 ' + (r.p95 || 0) + ' ms, stopped: ' + (r.stopReason || '—') + (saved ? ' — saved as capacity' : ''));
+  c.remove('ctl_last');
+  return { saved: saved, capacity: capacity_() };
+}
+
+/* ---- planning: will this exam fit? (used by the CoE exam editor) ---- */
+
+function r_capacityPlan(req) {
+  staff_(req, ['CoE']);
+  const x = req.exam || {};
+  const s = settings_(), cfg = ctlCfg_(s), cap = capacity_(s);
+  const start = toDate_(x.start), end = toDate_(x.end);
+  const expected = Math.max(0, Math.round(Number(x.expected) || 0));
+  const pseudo = { Camera: yn_(x.camera), Screen: yn_(x.screen), LiveProctor: yn_(x.live) };
+  const w = weight_(pseudo, s);
+  const usable = cap.usable * cfg.target / 100;
+  const out = { capacity: cap, cfg: cfg, weight: w, expected: expected, aloneMax: Math.floor(usable / w) };
+  if (!start || !end || end <= start) return Object.assign(out, { verdict: 'Need dates', message: 'Set the start and end time to check capacity.' });
+
+  const reg = {};
+  rows_('Candidates').forEach(cd => reg[cd.ExamID] = (reg[cd.ExamID] || 0) + 1);
+  const others = rows_('Exams').filter(e => e.ExamID !== x.id && ms_(e.StartIST) < end.getTime() && ms_(e.EndIST) > start.getTime());
+  const points = [start.getTime()].concat(others.map(e => ms_(e.StartIST)).filter(t => t > start.getTime() && t < end.getTime()));
+  let peak = 0, peakAt = start.getTime();
+  points.forEach(t => {
+    const l = others.filter(e => ms_(e.StartIST) <= t && ms_(e.EndIST) > t).reduce((sum, e) => sum + expected_(e, reg[e.ExamID]) * weight_(e, s), 0);
+    if (l > peak) { peak = l; peakAt = t; }
+  });
+  const free = Math.max(0, usable - peak);
+  const perBatch = Math.floor(free / w);
+  Object.assign(out, {
+    others: others.map(e => ({ title: e.Title, window: ist_(toDate_(e.StartIST), 'dd MMM, hh:mm a') + ' – ' + ist_(toDate_(e.EndIST), 'hh:mm a'), expected: expected_(e, reg[e.ExamID]) })),
+    otherLoadPct: Math.round(peak / cap.usable * 100), peakAtIST: ist_(new Date(peakAt), 'hh:mm a'), perBatch: perBatch,
+    registered: reg[x.id] || 0
+  });
+  if (!expected) return Object.assign(out, { verdict: 'Need number', message: 'Enter the expected number of candidates to check capacity.' });
+  const pct = Math.round((peak + expected * w) / cap.usable * 100);
+  out.pct = pct;
+  if (perBatch < 1) return Object.assign(out, { verdict: 'No capacity', message: 'Other exams already use the system’s capacity in this window. Choose a different time.' });
+  if (expected <= perBatch) {
+    out.verdict = expected <= perBatch * 0.8 ? 'Fits' : 'Tight';
+    out.message = out.verdict === 'Fits' ? 'All ' + expected + ' candidates can sit at one go.' : 'All ' + expected + ' candidates fit at one go, but close to the limit. Expect automatic pauses if more students join than expected.';
+    return out;
+  }
+  const n = Math.ceil(expected / perBatch), size = Math.ceil(expected / n);
+  const dur = Number(x.duration) || 0;
+  out.verdict = 'Use batches';
+  out.batches = n; out.batchSize = size;
+  out.message = expected + ' candidates is more than the ' + perBatch + ' the system can take at once in this window. Run the exam in ' + n + ' batches of about ' + size + '.';
+  const noLive = Math.floor(free / weight_({ Camera: pseudo.Camera, Screen: pseudo.Screen, LiveProctor: 'No' }, s));
+  if (yes_(pseudo.LiveProctor) && noLive >= expected) out.alt = 'Or switch off Live Proctor: then all ' + expected + ' fit at one go (snapshots are still stored).';
+  else if (yes_(pseudo.LiveProctor) && noLive > perBatch) out.alt = 'Switching off Live Proctor raises the limit to ' + noLive + ' per batch.';
+  if (!dur) { out.planNote = 'Set “Time per student” to get a batch timetable.'; return out; }
+  const step = (dur + 15) * 60000, windowMs = (dur + 10) * 60000;
+  out.plan = [];
+  for (let k = 0; k < n; k++) {
+    const bs = new Date(start.getTime() + k * step), be = new Date(bs.getTime() + windowMs);
+    out.plan.push({ n: k + 1, size: k < n - 1 ? size : expected - size * (n - 1), startInput: Utilities.formatDate(bs, CFG.TZ, "yyyy-MM-dd'T'HH:mm"), endInput: Utilities.formatDate(be, CFG.TZ, "yyyy-MM-dd'T'HH:mm"),
+      startIST: ist_(bs, 'dd MMM, hh:mm a'), endIST: ist_(be, 'hh:mm a') });
+  }
+  const lastEnd = ms_(out.plan[n - 1].endInput);
+  if (lastEnd > end.getTime()) out.planNote = 'The last batch ends at ' + ist_(new Date(lastEnd), 'hh:mm a') + ', after your window closes. Widen the window or run some batches on another day.';
+  out.planRule = 'Each batch window = time per student + 10 min late entry; 5 min gap between batches.';
+  return out;
+}
+
+/** Split a saved exam into batches: this exam becomes batch 1; copies get new codes and windows. */
+function r_createBatches(req) {
+  const u = staff_(req, ['CoE']);
+  const plan = (req.plan || []).slice(0, 20);
+  if (plan.length < 2) fail_('A batch plan needs at least two batches.');
+  return withLock_(() => {
+    const ex = exam_(req.examId);
+    if (!ex) fail_('Save the exam first.');
+    if (rows_('Attempts').some(a => a.ExamID === ex.ExamID && a.Status !== ST.VOID)) fail_('This exam already has attempts, so it cannot be split.');
+    const n = plan.length, baseTitle = String(ex.Title).replace(/\s+—\s+Batch \d+ of \d+$/, '');
+    const codes = rows_('Exams').map(e => lower_(e.AccessCode));
+    const qs = questions_(ex.ExamID);
+    const ids = [ex.ExamID];
+    plan.forEach((p, k) => {
+      const s0 = toDate_(p.startInput), e0 = toDate_(p.endInput);
+      if (!s0 || !e0 || e0 <= s0) fail_('Batch ' + (k + 1) + ' has an invalid time window.');
+    });
+    // batch 1 = this exam
+    update_('Exams', ex._row, { Title: baseTitle + ' — Batch 1 of ' + n, StartIST: toDate_(plan[0].startInput), EndIST: toDate_(plan[0].endInput), ExpectedCandidates: plan[0].size || '', UpdatedAt: new Date() });
+    for (let k = 1; k < n; k++) {
+      let code = String(ex.AccessCode).slice(0, 19) + '-B' + (k + 1);
+      while (codes.indexOf(lower_(code)) >= 0) code = String(ex.AccessCode).slice(0, 15) + '-B' + (k + 1) + Math.floor(Math.random() * 90 + 10);
+      codes.push(lower_(code));
+      const id = id_('EX');
+      ids.push(id);
+      const copy = {};
+      SCHEMA.Exams.forEach(col => copy[col] = ex[col]);
+      Object.assign(copy, { ExamID: id, Title: baseTitle + ' — Batch ' + (k + 1) + ' of ' + n, AccessCode: code, StartIST: toDate_(plan[k].startInput), EndIST: toDate_(plan[k].endInput),
+        ExpectedCandidates: plan[k].size || '', Hold: '', CreatedBy: u.email, CreatedAt: new Date(), UpdatedAt: new Date() });
+      append_('Exams', copy);
+      append_('Questions', qs.map(q => ({ QuestionID: id_('Q'), ExamID: id, Order: q.Order, Type: q.Type, Question: q.Question, Options: q.Options, Correct: q.Correct, Marks: q.Marks })));
+    }
+    // registered candidates: split by roll number across the batches
+    const all = rows_('Candidates');
+    const mine = all.filter(cd => cd.ExamID === ex.ExamID).sort((a, b) => String(a.RollNo) < String(b.RollNo) ? -1 : 1);
+    let moved = 0;
+    if (mine.length) {
+      const per = Math.ceil(mine.length / n);
+      mine.forEach((cd, i) => { const b = Math.min(n - 1, Math.floor(i / per)); if (b > 0) { cd.ExamID = ids[b]; cd.AdmitSentAt = ''; moved++; } });
+      if (moved) writeCols_('Candidates', all, ['ExamID', 'AdmitSentAt']);
+    }
+    audit_(u.email, 'EXAM_BATCHED', ex.ExamID, n + ' batches: ' + ids.join(', '));
+    ctlLog_(u.email, 'BATCHES', ex.ExamID, n + ' batches created' + (moved ? ', ' + moved + ' candidates moved' : ''));
+    return { examIds: ids, moved: moved };
+  });
+}

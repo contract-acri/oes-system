@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /review/
+Disallow: /control/
+Disallow: /papers/
+Disallow: /staff/

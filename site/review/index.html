@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ACRI · Reviewer Portal</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<script src="/config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --green:#63B72D; --green-d:#4C9420; --green-bg:#EEF7E8;
+  --blue:#166FB1; --blue-l:#3F9FCF; --blue-d:#0E568C; --navy:#0B2E4F; --blue-bg:#EAF3FA;
+  --ink:#1B2733; --muted:#5D6B7A; --line:#DDE6E1; --bg:#F4F8F5; --card:#fff;
+  --red:#C8372D; --red-bg:#FCECEA; --amber:#B86E00; --amber-bg:#FFF4E0; --violet:#5B4BB7; --violet-bg:#EFEDFB;
+  --r:14px; --shadow:0 1px 2px rgba(11,46,79,.06),0 6px 24px rgba(11,46,79,.07);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.55 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+h1,h2,h3{font-family:Montserrat,Inter,sans-serif;color:var(--navy);margin:0;letter-spacing:-.01em}
+button{font:inherit;cursor:pointer} input,textarea,select{font:inherit;color:var(--ink)}
+a{color:var(--blue)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 22px;background:#fff;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.brand img{width:44px;height:44px}
+.org{font-family:Montserrat,sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue)}
+.app{font-family:Montserrat,sans-serif;font-weight:800;font-size:17px;color:var(--navy);line-height:1.15}
+.stripe{height:4px;background:linear-gradient(90deg,var(--blue),var(--blue-l) 45%,var(--green))}
+.who{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.nav{display:flex;gap:4px;padding:0 22px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
+.nav button{border:0;background:none;padding:12px 14px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+.nav button.on{color:var(--navy);border-bottom-color:var(--green)}
+.nav .n{display:inline-block;min-width:20px;padding:0 6px;border-radius:999px;background:var(--red);color:#fff;font-size:11px;margin-left:5px}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 20px 60px}
+.narrow{max-width:460px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:20px}
+.card+.card,.mt{margin-top:16px}
+.eyebrow{font-family:Montserrat,sans-serif;font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--green-d);margin-bottom:5px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.between{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.spacer{flex:1}
+label.f{display:block;font-weight:600;font-size:12.5px;color:var(--navy);margin:12px 0 5px}
+.in{width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;background:#fff;outline:none}
+.in:focus{border-color:var(--blue-l);box-shadow:0 0 0 3px rgba(63,159,207,.16)}
+textarea.in{resize:vertical;min-height:70px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px} .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:0 16px}
+@media (max-width:760px){.g2,.g3{grid-template-columns:1fr}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:9px;padding:9px 15px;font-weight:600;background:var(--blue);color:#fff;white-space:nowrap}
+.btn:hover{background:var(--blue-d)} .btn:disabled{background:#AEBBC6;cursor:not-allowed}
+.btn.green{background:var(--green-d)} .btn.green:hover{background:#3F7E19}
+.btn.red{background:var(--red)} .btn.amber{background:var(--amber)}
+.btn.ghost{background:#fff;color:var(--blue);border:1.5px solid var(--line)} .btn.ghost:hover{background:var(--blue-bg);border-color:var(--blue-l)}
+.btn.sm{padding:6px 11px;font-size:13px} .btn.block{width:100%;margin-top:16px;padding:12px}
+.link{border:0;background:none;color:var(--blue);font-weight:600;padding:0}
+.err{display:none;margin-top:12px;padding:9px 12px;border-radius:9px;background:var(--red-bg);color:var(--red);font-size:13.5px}
+.okm{display:none;margin-top:12px;padding:9px 12px;border-radius:9px;background:var(--green-bg);color:var(--green-d);font-size:13.5px}
+.muted{color:var(--muted)} .small{font-size:12.5px}
+.tabs{display:flex;background:var(--bg);border-radius:10px;padding:4px;margin-bottom:6px}
+.tabs button{flex:1;border:0;background:none;padding:8px;border-radius:8px;font-weight:600;color:var(--muted)}
+.tabs button.on{background:#fff;color:var(--navy);box-shadow:var(--shadow)}
+.tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+@media (max-width:900px){.tiles{grid-template-columns:repeat(2,1fr)}}
+.tile{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.tile b{display:block;font-family:Montserrat,sans-serif;font-size:26px;color:var(--navy)}
+.tile span{font-size:12px;color:var(--muted);font-weight:600}
+.tile.hl{border-color:var(--green);background:var(--green-bg)}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:9px 10px;border-bottom:1.5px solid var(--line);white-space:nowrap}
+.tbl td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl tr.click{cursor:pointer} .tbl tr.click:hover td{background:#F8FBF9}
+.tscroll{overflow-x:auto}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;background:#EEF1F4;color:var(--muted)}
+.p-live,.p-Verified{background:var(--green-bg);color:var(--green-d)}
+.p-upcoming,.p-Submitted,.p-Under-Review{background:var(--amber-bg);color:var(--amber)}
+.p-In-Progress{background:var(--blue-bg);color:var(--blue-d)}
+.p-Sent-to-CoE{background:var(--violet-bg);color:var(--violet)}
+.p-Returned{background:var(--red-bg);color:var(--red)}
+.p-Result-Sent{background:var(--green-d);color:#fff}
+.title{font-weight:700;color:var(--navy)}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;letter-spacing:.06em;background:var(--blue-bg);color:var(--blue-d);padding:2px 7px;border-radius:6px;font-size:12.5px}
+.sw{position:relative;width:42px;height:24px;flex:none;display:inline-block}
+.sw input{opacity:0;width:0;height:0}
+.sw span{position:absolute;inset:0;background:#C9D3DB;border-radius:999px;transition:.2s;cursor:pointer}
+.sw span::before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.sw input:checked+span{background:var(--green)} .sw input:checked+span::before{transform:translateX(18px)}
+.icons{display:flex;gap:4px;flex-wrap:wrap}
+.icons i{font-style:normal;font-size:11px;font-weight:700;padding:2px 6px;border-radius:5px;background:var(--bg);color:var(--muted)}
+.icons i.on{background:var(--blue-bg);color:var(--blue-d)}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line)}
+.chk input{width:18px;height:18px;margin-top:2px;accent-color:var(--green-d)}
+.chk b{display:block;color:var(--navy)}
+.qc{border:1.5px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;background:#fff}
+.qc .hd{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.qc .num{font-family:Montserrat,sans-serif;font-weight:800;color:var(--blue);min-width:34px}
+.opt{display:flex;gap:8px;align-items:center;margin-top:7px}
+.opt input[type=radio]{width:18px;height:18px;accent-color:var(--green-d);flex:none}
+.opt .L{font-weight:700;color:var(--blue);width:16px}
+.rchips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.rchip{display:inline-flex;align-items:center;gap:6px;background:var(--blue-bg);color:var(--blue-d);font-size:12.5px;font-weight:600;padding:4px 6px 4px 10px;border-radius:999px}
+.rchip button{border:0;background:rgba(14,86,140,.12);color:var(--blue-d);border-radius:50%;width:18px;height:18px;line-height:16px;padding:0}
+.note{padding:10px 13px;border-radius:10px;font-size:13.5px;margin-top:12px}
+.note.amber{background:var(--amber-bg);color:#7A4A00} .note.blue{background:var(--blue-bg);color:var(--blue-d)} .note.red{background:var(--red-bg);color:var(--red)} .note.green{background:var(--green-bg);color:var(--green-d)}
+.ans{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:12px;background:#fff}
+.ans .q{white-space:pre-wrap;font-weight:600;color:var(--navy);margin:6px 0 10px}
+.ans .resp{white-space:pre-wrap;background:var(--bg);border-radius:9px;padding:11px 13px;min-height:44px}
+.ans .o{padding:6px 10px;border-radius:8px;margin:3px 0;border:1px solid transparent}
+.ans .o.pick{border-color:var(--blue-l);background:var(--blue-bg)}
+.ans .o.right{color:var(--green-d);font-weight:700}
+.ans .o.pick.wrong{border-color:#E7A39D;background:var(--red-bg)}
+.mk{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.mk input.m{width:90px} .mk input.c{flex:1;min-width:180px}
+.sticky{position:sticky;bottom:0;background:rgba(244,248,245,.96);backdrop-filter:blur(6px);border-top:1px solid var(--line);padding:12px 0;margin-top:18px;z-index:5}
+.ev{display:flex;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.ev b{min-width:150px;color:var(--navy)} .ev.v b{color:var(--red)}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px}
+.gal figure{margin:0;background:var(--bg);border-radius:9px;overflow:hidden;font-size:11.5px;color:var(--muted)}
+.gal img{width:100%;display:block;aspect-ratio:16/10;object-fit:cover;background:#0B2E4F;cursor:zoom-in}
+.gal figcaption{padding:5px 8px}
+.lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:14px}
+.lc{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:zoom-in}
+.lc .scr{position:relative;aspect-ratio:16/9;background:#0B2E4F;display:grid;place-items:center;color:#9FB3C5;font-size:12px}
+.lc .scr img.s{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.lc .scr img.c{position:absolute;right:8px;bottom:8px;width:30%;border-radius:7px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.lc .inf{display:flex;justify-content:space-between;gap:8px;padding:9px 12px;align-items:center}
+.lc .nm{font-weight:700;color:var(--navy);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sig{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;background:#C9D3DB}
+.sig.g{background:var(--green)} .sig.a{background:#E59A00} .sig.r{background:var(--red)}
+.ov{position:fixed;inset:0;background:rgba(11,46,79,.6);display:none;align-items:center;justify-content:center;z-index:50;padding:18px}
+.ov.on{display:flex}
+.box{background:#fff;border-radius:16px;max-width:520px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:92vh;overflow:auto}
+.box.wide{max-width:1200px}
+.box h2{font-size:19px;margin-bottom:8px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.on{opacity:1}
+.spin{width:28px;height:28px;border:3px solid rgba(22,111,177,.2);border-top-color:var(--blue);border-radius:50%;animation:sp .8s linear infinite;margin:30px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{text-align:center;color:var(--muted);padding:34px 10px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.filters button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.filters button.on{border-color:var(--green);background:var(--green-bg);color:var(--green-d)}
+.foot{text-align:center;color:var(--muted);font-size:12px;margin-top:26px}
+
+.xcard{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:16px 0;border-top:1px solid var(--line)}
+.xcard:first-of-type{border-top:0}
+.counts{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:6px}
+.counts b{color:var(--navy);font-size:14px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="ov" id="ov"><div class="box" id="ovbox"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+/* ==========================================================================
+   ACRI Online Examination — Reviewer portal (oes.acriindia.org.in/review)
+   Paste your Apps Script /exec URL below.
+   ========================================================================== */
+const API_URL = window.ACRI_API_URL || 'https://script.google.com/macros/s/AKfycbzE-HjXSg1EomncP1zQD-U-NPfv01q-28Uz7pyn-TrHLFfZ7ukxxXuNFs0x97KBMI27WA/exec';
+const EMBLEM = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHAAAABwCAMAAADxPgR5AAAAkFBMVEX+/v5quCtWtCtntRfJ5LKv2I+JxlFYshmRy2t4wU7r9eSl03jk8dhsvUnW68ZMrRPm8903qhjZ7Myb0HbT6cG23aRFriW94Kjc7tLi8NPo8+Cb0oeCwTt6wDh8xWXd8NJbuEShzm7c7tbg7tI9rCGTzoTB4Jzd8NaCvjjB36Pb8M294J7A3pzi7tbg7s8AAAADrzjnAAAAMHRSTlMA/////v//////Mf9v/9D/V/+x/+3///+TjUf/////kf//fZT///97//+r//98pABIHgpDAAAK6UlEQVR42u1aV2OsuA7G3aYPZVoyyUk5Zcvd///zrmQbMAxkPCfZt/VDAgxIlvSpWHaS/DfCkTYHoaUhbhRGt4K//VvMat4aqqqqosgKRkGIUpVSRAr+5dyehaHAqtCCN/X0OC9BYkIrRfSh/kJFIjdqHni+/vuJa6Iqor9IzqZFbuJ1PodMzN8qhQHlivOn2ZWaVuShWcr0yJhcvopykiz/FLsjsCv6a/z8YoRcc0xyASzFJ/g9rLJLEsnQK5hYMzepfpslLyq6+i1n3hHTlR/PGVGy+R1+er/X6eovmWfI/l5HGSjgfiG7YldswfzRC8j0xgsCDHynWwpabVFLzsgMma7Axo//SUXu8kpd0X7zxxwZSuQotylkjN2h1qddsW720iIRhXsBQ3kJy3XIkWiOZ7Mz62iRLLP/0CU0MMyCh9eTg1nF8St2G+ZDHsKhlP3AP9z55IYoudxEVRw/5361NSLjglkTuofrCkmjOJotfs79rFTArBPMXk4P1zlmt/GyOSlQ3sWrT7KcV2KMcpvwSB9vIUfvzLo6S0tbDrR1yrNhFu4hP62myk3pvb/vinTjOwGKvGT2ez4WHcn4UG9EgY6Q8oPkR2mzZT7Ga3YR7BFvZO49jSdHdvkbeAm2JQpnj+kmw+K933YIoEo4UE19TMtdqMGHZfKBIbNtqOo5YISURGbcfSSROM/h7h8k3lmokkcUIS+R+aOTkGt4U/I52P5Y53fYFbN7YgHIJNigZFKiNNxFNsl+JEnrJgFPQTRADnFaZldRvSFkve749l5exWjLErEhsx+gWMtdswwfZUQrYHUgGKazDLPDkCgXUV2sK/Vh932BzGEg+TJPOixkgG56eUECnZbaKRYjzdtpuLbJa+nBK4B6pXRRKZFpnINED0rtnFfjPBgZI81YeVzlrW7NZ552S4RK/PQylUuSXJdO/lk2Xa+WAtk1hMu9R0zKha+wnUStFytJLsHsO2lriDxg0OAF0ZPEUBwPi47TUsko4MFbWAHQWrz6x9H/C/+WToKLcakBtMdIg6gkiE/LEH1fHi7j/HIIeYyVGyI2g4A+/MvpUuPUufN+K0CN8cpBBc32QoYsyWQjx+TxRsI8UpNfS5/vRwwjLZWFqUAq7kEh7PTloMgOpoYfoA1eqtZ/EFiUdaMcM6Cm9FsQbTH+u5yqLYFD4kKHBI9rlZzgmCdYa3gOWWZf98UTkjFBai7nQBW7h1kdD2sEN7WDATuo0fQq4xX3lb6VvWVvUjlSaZJVYH7pPhSVzGaQliwMK8X+NYgw8BUfy0ouslaMVYrJAR8j+mWSv+Rk9IEsy8SQbTIgMQtxPEz+zXuYdmtYdslyXjk3nNsJ8sEXzOAhNUqUlpw/zz/ocO0WWi30jIeF05+4qJNUm4sUebBc0s0YZJntLHgBOHqGt2TSZbIwGTohrxfOzwON/lzJnMp6sgj8269R8LLFOUifLNkUETTZKuMCndZ7E6iiy2eLMswIx8FqSs8KYeSfGjX8ij/5G1/gnLrueVqSjBbtR4w2bqoijMWA0WaMksgeghFRhxZId4Pn2HGxv7iB2qyzYhbIJTuNXj9o139glz75FPrPQeI4WZ2qsRBWQYpIh0tj12zuJ9aMIWVgU9B0ztDFMowVUivkYUZgqtZxKeHVI9bNSHL45S/lgh/qIQtJzY2YjnE0YAjh2uq0FahT91xYc7n36r7i3gZKa08YXuOSWswElMaqctBuOdVO02vos3inBFf9oCuO8loUiLTjHspKCCsgfNCSE74BLPLACM2UPAfMiGmJNekOCP5BFK14V46mqgEqs8IH5nTohsCa8J9ZRZQph5mbMVfZ0XrUPOwmj3TGygYPSKF3KCfZqYH/C4Y8DRT3bKRrgAE+KRGj0eeoeXo/TqWipau5R5r1H86xBOAIOpjFfA3BOwwDSklQ9JHzbqr4lOEFmpP8Gbj+DycVDeKC9VyVHYH80M+ilBJpS0Xvh/PKB6iiVMLAi3D57PxZydqREmGscTffZuWa8a8ZB0fqjEedhuu89ilEa1+v1DlGpnyIN5RgqVLC6xY+KiynSu8XU/J1YQC6goTyJJu7iZpSDYdGLaVKTY2cnNDpRWgRH4WD+LxBlPt0RYMKHyUALYJVygm11kqTcqZZjI9Ae4oGIRVfoqRoj6iBoNKVrrwYQ3dGqF2JYXrLvbg2aGnRSkLzZXAgbhWMUJNCaOMnca5tAm3cmo6MYqae4ZgrgLrU7byl5A0jIZW73nMYV2FYgDc5VLPGaz7XJOhCaWyUiznDQcIOlGKqHle2vBuAyx1qAICmvxJw9DJRWIjCfZHLilAATu5qBK2mUsozHG0oIEpAh+3kHEH7fI0TxgfUQ8TQkKH/Vtg3AErgp8ghLaUl0iLqKa34KsOjNvJg+Y4pCgCkwXoENij4oJbF8F3uXhujxdF6ayV6Jy+prPtKr9J6QOncLTgNo+6bRp3KftZKDEdQuJSZbutE6HJKkrOV6Mkvcgq6tkyjgFivU1TWUEEtJKRB9VKCIZWNZMRblM57MI13fLOfN/81vizbwRcR2hRJtOkQygKGAUmOlRyCTsC2Q2vIVSAcQpveHRcNWKQvuSBTAYzBR5HeBrsZSkOSrfc5Y3iPgVstlqE/fLYI05MvpSBMUNLnZRDvLFbRBkEUCzRal7ZGdv51FqBSqpZN0CE9BQl4CAktgroSs5600yAs0ejIkVLuU4qhYQsZGsrw0nViYW5CzUo/L4UkOFc05HrUdFGjSR13z6+3sZzPVwaHlYbX48VfLPxiq21EkRGFZhzEAoV+rnFKpcGwTSNa6vlYohY0ao+qcByNbesJv3QQVtrrDZXeSLFZ638f1vc3NqJs+Jrn1NbCi7bXW3ISQJNsrGYOi5bQZnNT2ZCpDgF47SSue6w1NVOWGDFTjwvuIq7fb6gb+TgDd7+y9hIWqOsmxFhzjNsf8gy9Ug/uTq32LSFjEb0WZ9wSP3JPQ3qO3DfLNhTqRUoXPdcy6LNF6pSHPAYFl3Gb5LMGnHlv7rIiLDeSfq7fm4ib9aL6XeRnvYdJgTHVjWOkNdisZKc0jdth92wqbmEYLyBfdDC/x8JGD1Ys/EWkLfSiR/scF08ny9H7LHi6atHqSBHrBcPIfdCXqyb06/7bfdFmBE/UaYeVHnSsiA/7gN++jYXotSbOlNb3+L4b3W9BdIhv+m4jRmr0cX1fqng/xOXhezEqNrYtu32U9+t7MdqxjS1b8P6YGfcTashnFGq1FYPU8k6NvnywD9zQfQTsJqcQUQaUH6mrivCNyfWPMR5BPjyH9rAr4l0/wimaG5vO29vcK6jZ3zbhKeJAhtk9RdWnwLC/WWv/ijkAcpvjkOtfb8uXxeB487DJuBMXZ8Iykp89TnOMQM0NE95xoAaQ82HQ4vsILxR3HRmCNZG4lTA+jhGa3XcoitPqqb6RMD4wNDdK/pncNY5mt30OS+8/xoyIhsvipNnTcdv1t92e33vGbIS1qejDqt5eP8BMA3tf+ncPt/YETiee1424XxXiDfpJkn/q/OWOPjyvGvHn2mHUTx73xHAIRz7p1WFc8MSrMvYsJPs0O3dktKgq0vJFEjaLvo4mFZNfdRoaqcGhY1GunvU5c+iRQhc+a5KvG6k96KwoNGEPJbT+cR8+rY/8gK11BTsK2dcf9U4aoQs47A1HybH1ZHdP4Jy5gnbxH8/JvzVSOEnewuF5O2B3Ac6Zp8l/Yzb+DwPkaZxlmml3AAAAAElFTkSuQmCC';
+const PORTAL = 'review';
+const PORTAL_NAME = 'Reviewer Portal';
+const PRISTINE = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+const BOOT = window.__ACRI_BOOT || null;
+const SKEY = 'acri_review_session';
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pillCls = s => 'pill p-' + String(s).replace(/\s+/g, '-');
+let SESSION = null, VIEW = 0, EXAMS = [], clockOffset = 0;
+
+function loadSession() { if (BOOT && BOOT.session) return BOOT.session; try { return JSON.parse(localStorage.getItem(SKEY) || 'null'); } catch (e) { return null; } }
+function saveSession(s) { SESSION = s; try { s ? localStorage.setItem(SKEY, JSON.stringify(s)) : localStorage.removeItem(SKEY); } catch (e) {} }
+
+async function api(action, data) {
+  const body = Object.assign({ action, token: SESSION && SESSION.token }, data || {});
+  const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+  const j = await res.json();
+  if (j.serverTime) clockOffset = j.serverTime - Date.now();
+  if (!j.ok) {
+    if (j.error === 'SESSION_EXPIRED') { saveSession(null); authView('Your session expired. Please sign in again.'); throw new Error('Session expired.'); }
+    throw new Error(j.error || 'Something went wrong.');
+  }
+  return j;
+}
+function toast(m, ms) { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), ms || 2600); }
+function modal(html, wide) { $('#ovbox').className = 'box' + (wide ? ' wide' : ''); $('#ovbox').innerHTML = html; $('#ov').classList.add('on'); }
+function closeModal() { $('#ov').classList.remove('on'); modal.onClose && modal.onClose(); modal.onClose = null; }
+$('#ov').addEventListener('click', e => { if (e.target.id === 'ov') closeModal(); });
+function showErr(id, m) { const e = $(id); if (e) { e.textContent = m || ''; e.style.display = m ? 'block' : 'none'; } }
+function busy(btn, on, label) { if (!btn) return; if (on) { btn.dataset.l = btn.innerHTML; btn.disabled = true; btn.innerHTML = label || 'Working…'; } else { btn.disabled = false; btn.innerHTML = btn.dataset.l || btn.innerHTML; } }
+function confirmBox(title, text, okLabel, cls, withNote, notePh) {
+  return new Promise(resolve => {
+    modal(`<h2>${esc(title)}</h2><p class="muted">${text}</p>${withNote ? `<textarea class="in" id="cbn" rows="4" placeholder="${esc(notePh || '')}"></textarea>` : ''}
+      <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn ghost" id="cbx">Cancel</button><button class="btn ${cls || ''}" id="cby">${esc(okLabel)}</button></div>`);
+    $('#cbx').onclick = () => { closeModal(); resolve(null); };
+    $('#cby').onclick = () => { const v = withNote ? $('#cbn').value : true; closeModal(); resolve(v); };
+  });
+}
+const GRADES = [['O', 'Outstanding', 10, 90], ['A+', 'Excellent', 9, 80], ['A', 'Very Good', 8, 70], ['B+', 'Good', 7, 60], ['B', 'Above Average', 6, 55], ['C', 'Average', 5, 50], ['P', 'Pass', 4, 40], ['F', 'Fail', 0, 0]];
+function gradeOf(bands, total, max) {
+  const b = bands || {};
+  const pct = max ? Math.round(total / max * 10000) / 100 : 0;
+  const g = GRADES.find(x => pct >= (x[0] === 'F' ? 0 : (b[x[0]] != null ? Number(b[x[0]]) : x[3]))) || GRADES[7];
+  return { pct, grade: g[0], meaning: g[1], gp: g[2], result: g[0] === 'F' ? 'Fail' : 'Pass' };
+}
+function openPdf(b64, name) {
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+  const w = window.open(url, '_blank');
+  if (!w) modal(`<h2>${esc(name)}</h2><p class="muted">Your browser blocked the new tab.</p><div class="row" style="justify-content:flex-end"><a class="btn" href="${url}" download="${esc(name)}">Download PDF</a><button class="btn ghost" onclick="closeModal()">Close</button></div>`);
+}
+function brand(sub) { return `<div class="brand"><img src="${EMBLEM}" alt="ACRI"><div><div class="org">Ahmedabad Centre for Research &amp; Innovation</div><div class="app">${sub}</div></div></div>`; }
+
+function openFullWindow() {
+  const tag = '<script>window.__ACRI_BOOT=' + JSON.stringify({ session: SESSION }).replace(/</g, '\\u003c') + ';<\/script>';
+  const html = /<head[^>]*>/i.test(PRISTINE) ? PRISTINE.replace(/<head[^>]*>/i, m => m + tag) : tag + PRISTINE;
+  const w = window.open(URL.createObjectURL(new Blob([html], { type: 'text/html' })), '_blank');
+  if (!w) toast('Allow pop-ups for this site to open the full window.');
+}
+
+
+
+/* ============================ AUTH ============================ */
+
+function authView(msg, tab) {
+  VIEW++;
+  $('#app').innerHTML = `<header class="top">${brand(PORTAL_NAME)}</header><div class="stripe"></div>
+  <main class="wrap narrow"><div class="card" style="margin-top:20px">
+    <div class="tabs"><button id="t1" class="${tab === 'req' ? '' : 'on'}">Sign in</button><button id="t2" class="${tab === 'req' ? 'on' : ''}">Request account</button></div>
+    <div id="authBody"></div></div>
+    <div class="foot">Office of the Controller of Examinations · ACRI Online Examination System</div></main>`;
+  $('#t1').onclick = () => authView('', 'in');
+  $('#t2').onclick = () => authView('', 'req');
+  if (tab === 'req') {
+    $('#authBody').innerHTML = `<p class="small muted" style="margin:6px 0 0">Your request is reviewed by ACRI. You can sign in once it is activated.</p>
+      <label class="f">Full name</label><input class="in" id="rn">
+      <label class="f">Email</label><input class="in" id="re" type="email">
+      <div class="g2"><div><label class="f">Designation</label><input class="in" id="rd"></div><div><label class="f">Phone</label><input class="in" id="rp"></div></div>
+      <div class="g2"><div><label class="f">Password</label><input class="in" id="rw" type="password" placeholder="At least 8 characters"></div><div><label class="f">Confirm password</label><input class="in" id="rw2" type="password"></div></div>
+      <button class="btn green block" id="rgo">Request account</button><div class="err" id="ae"></div><div class="okm" id="ao"></div>`;
+    $('#rgo').onclick = async () => {
+      showErr('#ae'); if ($('#rw').value !== $('#rw2').value) return showErr('#ae', 'Passwords do not match.');
+      const b = $('#rgo'); busy(b, true, 'Sending…');
+      try {
+        const r = await api('requestAccount', { portal: PORTAL, name: $('#rn').value, email: $('#re').value, designation: $('#rd').value, phone: $('#rp').value, password: $('#rw').value });
+        const o = $('#ao'); o.textContent = r.message; o.style.display = 'block'; b.style.display = 'none';
+      } catch (e) { showErr('#ae', e.message); busy(b, false); }
+    };
+  } else {
+    $('#authBody').innerHTML = `<label class="f">Email</label><input class="in" id="le" type="email" autocomplete="username">
+      <label class="f">Password</label><input class="in" id="lp" type="password" autocomplete="current-password">
+      <button class="btn block" id="lgo">Sign in</button><div class="err" id="ae"></div>`;
+    const go = async () => {
+      showErr('#ae'); const b = $('#lgo'); busy(b, true, 'Signing in…');
+      try { const r = await api('login', { portal: PORTAL, email: $('#le').value, password: $('#lp').value }); saveSession({ token: r.token, user: r.user }); shell('exams'); }
+      catch (e) { showErr('#ae', e.message); busy(b, false); }
+    };
+    $('#lgo').onclick = go;
+    $('#lp').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    if (msg) showErr('#ae', msg);
+  }
+}
+
+
+
+/* ============================ SHELL ============================ */
+
+let NAVSEL = 'exams';
+function shell(view, arg) {
+  NAVSEL = ['exams', 'live'].indexOf(view) >= 0 ? view : NAVSEL;
+  if (!$('#nav')) {
+    $('#app').innerHTML = `<header class="top">${brand(PORTAL_NAME)}
+      <div class="who"><span>${esc(SESSION.user.name)} · ${esc(SESSION.user.email)}</span>
+      <button class="btn ghost sm" id="out">Sign out</button></div></header>
+      <div class="stripe"></div>
+      <nav class="nav" id="nav"><button data-v="exams">My exams <span class="n" id="qn" style="display:none"></span></button><button data-v="live">Live Proctor</button></nav>
+      <main class="wrap" id="view"></main>`;
+    $('#nav').querySelectorAll('button').forEach(b => b.onclick = () => shell(b.dataset.v));
+    $('#out').onclick = async () => { try { await api('logout'); } catch (e) {} saveSession(null); authView('', 'in'); };
+    if ($('#full')) $('#full').onclick = openFullWindow;
+  }
+  $('#nav').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === NAVSEL));
+  VIEW++;
+  window.scrollTo(0, 0);
+  $('#view').innerHTML = '<div class="spin"></div>';
+  ({ exams: examsView, attempts: attemptsView, attempt: attemptView, live: liveView })[view](arg);
+}
+
+const TO_MARK = ['Submitted', 'Under Review', 'Returned'];
+
+/* ============================ MY EXAMS ============================ */
+
+async function examsView() {
+  const my = VIEW;
+  let r;
+  try { r = await api('myExams'); } catch (e) { if (my === VIEW) $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  if (my !== VIEW) return;
+  EXAMS = r.exams;
+  const c = (e, k) => e.counts[k] || 0;
+  const toMark = EXAMS.reduce((s, e) => s + TO_MARK.reduce((t, k) => t + c(e, k), 0), 0);
+  const q = $('#qn'); if (q) { q.textContent = toMark; q.style.display = toMark ? 'inline-block' : 'none'; }
+  const returned = EXAMS.reduce((s, e) => s + c(e, 'Returned'), 0);
+  $('#view').innerHTML = `
+    <div class="tiles" style="grid-template-columns:repeat(4,1fr)">
+      <div class="tile ${EXAMS.some(e => e.state === 'live') ? 'hl' : ''}"><b>${EXAMS.filter(e => e.state === 'live').length}</b><span>Assigned exams live now</span></div>
+      <div class="tile"><b>${toMark}</b><span>Attempts to mark</span></div>
+      <div class="tile"><b>${returned}</b><span>Returned by the CoE</span></div>
+      <div class="tile"><b>${EXAMS.length}</b><span>Exams assigned to you</span></div>
+    </div>
+    ${returned ? `<div class="note red" style="margin:-4px 0 16px">The Controller of Examinations returned ${returned} attempt(s) to you for revision. Open the exam and look for the <b>Returned</b> filter.</div>` : ''}
+    <div class="card"><div class="eyebrow">Assigned to you</div><h2 style="font-size:20px">Exams</h2>
+    ${EXAMS.length ? EXAMS.map((e, i) => `<div class="xcard"><div>
+        <div class="title">${esc(e.title)} <span class="${pillCls(e.state)}">${{ live: 'Live', upcoming: 'Upcoming', closed: 'Closed', off: 'Off' }[e.state]}</span></div>
+        <div class="small muted">${esc(e.startIST)} → ${esc(e.endIST)} IST · ${e.totalMarks} marks</div>
+        <div class="counts"><span><b>${c(e, 'In Progress')}</b> writing</span><span><b>${TO_MARK.reduce((t, k) => t + c(e, k), 0)}</b> to mark</span><span><b>${c(e, 'Sent to CoE')}</b> with CoE</span><span><b>${c(e, 'Verified') + c(e, 'Result Sent')}</b> verified</span></div></div>
+        <div class="row">${e.live && e.state === 'live' ? `<button class="btn ghost" data-lv="${i}">Live Proctor</button>` : ''}<button class="btn" data-at="${i}">Mark answers</button></div></div>`).join('')
+      : '<div class="empty">No exams are assigned to you yet. The Controller of Examinations assigns reviewers to each exam.</div>'}</div>`;
+  $('#view').querySelectorAll('[data-at]').forEach(b => b.onclick = () => shell('attempts', EXAMS[b.dataset.at].id));
+  $('#view').querySelectorAll('[data-lv]').forEach(b => b.onclick = () => shell('live', EXAMS[b.dataset.lv].id));
+}
+
+/* ============================ ATTEMPTS ============================ */
+
+let ATT_FILTER = 'To mark';
+async function attemptsView(examId) {
+  const my = VIEW;
+  let r;
+  try { r = await api('listAttempts', { examId }); } catch (e) { if (my === VIEW) $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  if (my !== VIEW) return;
+  const groups = { 'To mark': a => TO_MARK.indexOf(a.status) >= 0, 'Returned': a => a.status === 'Returned', 'Writing now': a => a.status === 'In Progress',
+    'With CoE': a => a.status === 'Sent to CoE', 'Verified': a => a.status === 'Verified' || a.status === 'Result Sent', 'All': a => true };
+  const draw = () => {
+    const list = r.attempts.filter(groups[ATT_FILTER]);
+    $('#view').innerHTML = `<div class="between" style="margin-bottom:14px"><button class="link" id="back">← My exams</button>${r.exam.live && r.exam.state === 'live' ? '<button class="btn" id="lv">Open Live Proctor</button>' : ''}</div>
+    <div class="card"><div class="eyebrow">Marking</div><h2 style="font-size:20px">${esc(r.exam.title)}</h2>
+      <p class="small muted" style="margin:4px 0 0">${esc(r.exam.startIST)} → ${esc(r.exam.endIST)} IST · ${r.exam.totalMarks} marks · MCQ marks are filled in automatically</p>
+      <div class="filters">${Object.keys(groups).map(g => `<button class="${ATT_FILTER === g ? 'on' : ''}" data-fl="${esc(g)}">${esc(g)} · ${r.attempts.filter(groups[g]).length}</button>`).join('')}</div>
+      ${list.length ? `<div class="tscroll"><table class="tbl"><thead><tr><th>Student</th><th>Status</th><th>Submitted</th><th>Warnings</th><th>Score</th></tr></thead><tbody>
+      ${list.map(a => `<tr class="click" data-id="${esc(a.id)}"><td><div class="title">${esc(a.name)}</div><div class="small muted">${esc(a.email)}</div></td>
+        <td><span class="${pillCls(a.status)}">${esc(a.status)}</span></td><td class="small">${esc(a.submitted || '—')}</td>
+        <td>${a.violations ? `<b style="color:var(--red)">${a.violations}</b>` : '0'}</td><td>${a.total !== '' && a.total != null ? `<b>${a.total}</b> / ${a.max}` : '—'}</td></tr>`).join('')}
+      </tbody></table></div>` : '<div class="empty">Nothing here.</div>'}</div>`;
+    $('#back').onclick = () => shell('exams');
+    if ($('#lv')) $('#lv').onclick = () => shell('live', examId);
+    $('#view').querySelectorAll('[data-fl]').forEach(b => b.onclick = () => { ATT_FILTER = b.dataset.fl; draw(); });
+    $('#view').querySelectorAll('tr[data-id]').forEach(t => t.onclick = () => {
+      const a = r.attempts.find(x => x.id === t.dataset.id);
+      if (a.status === 'In Progress') return toast('This student is still writing.');
+      shell('attempt', { id: t.dataset.id, examId });
+    });
+  };
+  draw();
+}
+
+/* ============================ MARK AN ATTEMPT ============================ */
+
+let AT = null;
+async function attemptView(arg) {
+  const my = VIEW;
+  let r;
+  try { r = await api('getAttempt', { attemptId: arg.id }); } catch (e) { if (my === VIEW) $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  if (my !== VIEW) return;
+  AT = r;
+  const a = r.attempt, st = a.status;
+  const editable = TO_MARK.indexOf(st) >= 0;
+  const VTYPES = ['TAB_HIDDEN', 'WINDOW_BLUR', 'FULLSCREEN_EXIT', 'SCREEN_SHARE_STOPPED', 'CAMERA_STOPPED'];
+  const nWritten = r.questions.filter(q => q.type !== 'MCQ').length;
+  $('#view').innerHTML = `<div class="between" style="margin-bottom:14px"><button class="link" id="back">← Attempts</button><span class="small muted">Attempt ${esc(a.id)}</span></div>
+  <div class="card"><div class="between"><div><div class="eyebrow">${esc(r.exam.title)}</div><h2 style="font-size:21px">${esc(a.name)} <span class="${pillCls(st)}" style="vertical-align:middle">${esc(st)}</span></h2>
+    <p class="small muted" style="margin:3px 0 0">${esc(a.email)} · submitted ${esc(a.submitted || '—')}${a.submitReason ? ' (' + esc(a.submitReason) + ')' : ''}</p></div>
+    <div style="text-align:right"><div style="font-family:Montserrat;font-weight:800;font-size:26px;color:var(--navy)"><span id="liveTot">—</span> <span class="muted" style="font-size:16px">/ ${a.max}</span></div>
+    <div class="small ${a.violations ? '' : 'muted'}" style="${a.violations ? 'color:var(--red);font-weight:700' : ''}">${a.violations} proctoring warning(s)</div></div></div>
+    ${st === 'Returned' && a.coeRemarks ? `<div class="note red"><b>Returned by the CoE:</b><br>${esc(a.coeRemarks).replace(/\n/g, '<br>')}</div>` : ''}
+    ${!editable ? `<div class="note blue">This attempt is <b>${esc(st)}</b>. Marks are read-only for reviewers now.</div>` : `<div class="note green">MCQ marks are pre-filled from the answer key — you can adjust them. Enter marks for the ${nWritten} written answer(s), then click <b>Send to CoE</b>.</div>`}
+  </div>
+  <div class="card"><div class="tabs" style="max-width:380px"><button class="on" id="tA">Answers &amp; marks</button><button id="tP">Proctoring (${r.events.filter(e => VTYPES.indexOf(e.type) >= 0).length} / ${r.snapshots.length})</button></div>
+    <div id="paneA">${r.questions.map((q, i) => answerCard(q, i, editable)).join('')}</div>
+    <div id="paneP" style="display:none">
+      <h3 style="font-size:15px;margin-top:8px">Activity log</h3>
+      <div>${r.events.map(e => `<div class="ev ${VTYPES.indexOf(e.type) >= 0 ? 'v' : ''}"><span class="muted" style="min-width:150px">${esc(e.time)}</span><b>${esc(e.type.replace(/_/g, ' '))}</b><span class="muted">${esc(e.detail)}</span></div>`).join('') || '<div class="empty">No events.</div>'}</div>
+      <h3 style="font-size:15px;margin-top:18px">Snapshots</h3>
+      ${r.snapshots.length ? `<div class="gal" id="gal">${r.snapshots.map(s => `<figure><img data-fid="${esc(s.fileId)}" alt=""><figcaption>${esc(s.time)} · ${esc(s.kind)}<br>${esc(s.reason)}</figcaption></figure>`).join('')}</div>
+        <button class="btn ghost mt" id="more">Load snapshots</button>` : '<div class="empty">No snapshots stored.</div>'}
+    </div>
+  </div>
+  <div class="card"><label class="f" style="margin-top:0">Remarks for the Controller of Examinations <span class="muted">(optional — e.g. concerns about proctoring warnings)</span></label>
+    <textarea class="in" id="rvNote" rows="3" ${editable ? '' : 'disabled'}>${esc(a.reviewerRemarks || '')}</textarea></div>
+  ${editable ? `<div class="sticky"><div class="row"><button class="btn ghost" id="bSave">Save draft</button><button class="btn green" id="bSend">Send to CoE →</button>
+    <span class="small muted" id="miss"></span></div><div class="err" id="ae"></div></div>` : ''}`;
+
+  $('#back').onclick = () => shell('attempts', arg.examId || a.examId);
+  $('#tA').onclick = () => { $('#tA').classList.add('on'); $('#tP').classList.remove('on'); $('#paneA').style.display = ''; $('#paneP').style.display = 'none'; };
+  $('#tP').onclick = () => { $('#tP').classList.add('on'); $('#tA').classList.remove('on'); $('#paneP').style.display = ''; $('#paneA').style.display = 'none'; if (!loadSnaps.done) loadSnaps(); };
+  if ($('#more')) $('#more').onclick = loadSnaps;
+  if ($('#gal')) $('#gal').addEventListener('click', ev => { if (ev.target.tagName === 'IMG' && ev.target.src) modal(`<img src="${ev.target.src}" style="width:100%;border-radius:10px"><div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn ghost" onclick="closeModal()">Close</button></div>`, true); });
+  const upd = () => { recalc(); const m = document.querySelectorAll('[data-mq]'); const miss = [...m].filter(x => x.value === '').length; if ($('#miss')) $('#miss').textContent = miss ? miss + ' question(s) still need marks' : 'All questions marked'; };
+  $('#paneA').addEventListener('input', upd);
+  upd();
+  loadSnaps.done = false;
+  const act = async (btn, fn, label) => { showErr('#ae'); busy(btn, true, label); try { await fn(); } catch (e) { showErr('#ae', e.message); busy(btn, false); } };
+  if ($('#bSave')) $('#bSave').onclick = () => act($('#bSave'), async () => {
+    await api('saveMarks', { attemptId: a.id, marks: collectMarks(), remarks: $('#rvNote').value, asReviewer: true });
+    toast('Draft saved'); busy($('#bSave'), false);
+  }, 'Saving…');
+  if ($('#bSend')) $('#bSend').onclick = async () => {
+    const t = $('#liveTot').textContent;
+    if (!(await confirmBox('Send to the Controller of Examinations?', `Total <b>${esc(t)} / ${esc(a.max)}</b>. After sending you can't change the marks unless the CoE returns the attempt to you.`, 'Send to CoE', 'green'))) return;
+    act($('#bSend'), async () => {
+      await api('saveMarks', { attemptId: a.id, marks: collectMarks(), remarks: $('#rvNote').value, send: true, asReviewer: true });
+      toast('Sent to the CoE'); shell('attempts', arg.examId || a.examId);
+    }, 'Sending…');
+  };
+}
+
+function answerCard(q, i, editable) {
+  let resp;
+  if (q.type === 'MCQ') {
+    const m = String(q.answer).match(/^(\d+)\)/), pick = m ? Number(m[1]) - 1 : -1;
+    resp = q.options.map((o, j) => `<div class="o ${j === pick ? 'pick' : ''} ${j === q.correct ? 'right' : ''} ${j === pick && j !== q.correct ? 'wrong' : ''}">${String.fromCharCode(65 + j)}. ${esc(o)} ${j === q.correct ? '✓' : ''}${j === pick ? ' <span class="small">← student</span>' : ''}</div>`).join('')
+      + (pick < 0 ? '<div class="small muted" style="margin-top:4px">Not answered</div>' : '');
+  } else resp = `<div class="resp">${q.answer ? esc(q.answer) : '<span class="muted">No answer written</span>'}</div>`;
+  return `<div class="ans"><div class="between"><span class="small" style="font-weight:700;color:var(--blue)">Q${i + 1}${q.section ? ' · ' + esc(q.section) : ''} · ${q.type === 'MCQ' ? 'Multiple choice' : 'Written'} · ${q.marks} marks</span>${q.type === 'MCQ' ? `<span class="small muted">Auto-marked: ${q.auto === '' ? '—' : q.auto}</span>` : ''}</div>
+    <div class="q">${esc(q.text)}</div>${resp}
+    ${q.modelAnswer ? `<details style="margin-top:8px"><summary class="small" style="cursor:pointer;color:var(--green-d);font-weight:600">Model answer / marking scheme from the setter</summary><div class="resp" style="margin-top:6px;background:var(--green-bg)">${esc(q.modelAnswer)}</div></details>` : ''}
+    ${q.recorded ? `<div class="mk"><span class="small" style="font-weight:600">Marks</span><input class="in m" type="number" min="0" max="${q.marks}" step="0.5" data-mq="${esc(q.id)}" value="${esc(q.awarded)}" ${editable ? '' : 'disabled'}><span class="small muted">/ ${q.marks}</span>
+      <input class="in c" data-cq="${esc(q.id)}" value="${esc(q.comment)}" placeholder="Comment (optional)" ${editable ? '' : 'disabled'}></div>` : '<div class="small muted mt">No answer record (the question was added after this attempt).</div>'}</div>`;
+}
+
+function collectMarks() {
+  const m = {};
+  document.querySelectorAll('[data-mq]').forEach(el => { m[el.dataset.mq] = { awarded: el.value === '' ? '' : Number(el.value), comment: (document.querySelector(`[data-cq="${el.dataset.mq}"]`) || {}).value || '' }; });
+  return m;
+}
+function recalc() {
+  let t = 0, missing = 0;
+  document.querySelectorAll('[data-mq]').forEach(el => { if (el.value === '') missing++; else t += Number(el.value) || 0; });
+  const e = $('#liveTot'); if (e) e.textContent = (Math.round(t * 100) / 100) + (missing ? ' *' : '');
+  const g = $('#liveGrade');
+  if (g && AT) {
+    const max = Number(AT.attempt.max) || AT.questions.reduce((s, q) => s + (Number(q.marks) || 0), 0);
+    const x = gradeOf(AT.exam.bands, t, max);
+    g.textContent = missing ? 'Grade shown once every question is marked' : `${x.pct}% · Grade ${x.grade} (${x.meaning}) · GP ${x.gp} · ${x.result}`;
+    g.style.color = missing ? 'var(--muted)' : (x.result === 'Fail' ? 'var(--red)' : 'var(--green-d)');
+  }
+}
+
+async function loadSnaps() {
+  loadSnaps.done = true;
+  const imgs = [...document.querySelectorAll('#gal img[data-fid]')].filter(i => !i.src).slice(0, 12);
+  if (!imgs.length) { if ($('#more')) $('#more').style.display = 'none'; return; }
+  const b = $('#more'); busy(b, true, 'Loading…');
+  try {
+    const r = await api('getSnapshots', { fileIds: imgs.map(i => i.dataset.fid) });
+    imgs.forEach(i => { if (r.images[i.dataset.fid]) i.src = r.images[i.dataset.fid]; else i.alt = 'Unavailable'; });
+  } catch (e) { toast(e.message); }
+  busy(b, false);
+  const left = [...document.querySelectorAll('#gal img[data-fid]')].filter(i => !i.src).length;
+  if (b) b.textContent = left ? 'Load more (' + left + ' left)' : 'All snapshots loaded';
+  if (b && !left) b.disabled = true;
+}
+
+
+
+/* ============================ LIVE PROCTOR ============================ */
+
+async function liveView(examId) {
+  const my = VIEW;
+  if (!EXAMS.length) { try { EXAMS = (await api('myExams')).exams; } catch (e) {} }
+  if (my !== VIEW) return;
+  const list = EXAMS.filter(e => e.live);
+  if (!examId) { const l = list.find(e => e.state === 'live'); examId = l ? l.id : ''; }
+  $('#view').innerHTML = `<div class="card"><div class="between"><div><div class="eyebrow">Live Proctor</div><h2 style="font-size:20px">Students writing your exams</h2>
+      <p class="small muted" style="margin:3px 0 0">Screens and webcams refresh every few seconds. Click a tile to enlarge it.</p></div>
+      <select class="in" id="lsel" style="max-width:380px"><option value="">Choose an exam…</option>${list.map(e => `<option value="${esc(e.id)}" ${e.id === examId ? 'selected' : ''}>${esc(e.title)} — ${e.state === 'live' ? 'LIVE' : e.state}</option>`).join('')}</select></div>
+    <div id="lstat" class="small muted mt"></div><div class="lgrid" id="lgrid"></div></div>`;
+  $('#lsel').onchange = () => shell('live', $('#lsel').value);
+  if (examId) livePoll(examId, my);
+  else $('#lgrid').innerHTML = `<div class="empty" style="grid-column:1/-1">${list.length ? 'Choose an exam above.' : 'None of your assigned exams use Live Proctor.'}</div>`;
+}
+
+let ZOOM = null, LIVE_PG = 1, LIVE_EX = '';
+async function livePoll(examId, my) {
+  if (my !== VIEW) return;
+  if (LIVE_EX !== examId) { LIVE_EX = examId; LIVE_PG = 1; }
+  const t0 = Date.now();
+  try {
+    const r = await api('liveGrid', { examId, page: LIVE_PG, zoom: ZOOM || '' });
+    if (my !== VIEW) return;
+    LIVE_PG = r.page;
+    const now = Date.now() + clockOffset, hb = r.heartbeatSeconds || 30;
+    const sm = r.summary || {};
+    $('#lstat').innerHTML = `<div class="between"><span><b style="color:var(--navy)">${r.total}</b> student(s) writing${sm.paused ? ' · <b style="color:var(--blue)">' + sm.paused + ' paused</b>' : ''}${sm.warned ? ' · <b style="color:var(--red)">' + sm.warned + ' with warnings</b>' : ''}${sm.noSignal ? ' · ' + sm.noSignal + ' no signal' : ''} · updated ${new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</span>
+      ${r.pages > 1 ? `<span class="row" style="gap:6px"><button class="btn ghost sm" id="lpPrev" ${r.page <= 1 ? 'disabled' : ''}>‹ Prev</button><span class="small" style="font-weight:600">Page ${r.page} of ${r.pages}</span><button class="btn ghost sm" id="lpNext" ${r.page >= r.pages ? 'disabled' : ''}>Next ›</button></span>` : ''}</div>
+      <div class="small muted" style="margin-top:4px">Only the ${r.perPage} students on this page stream images (every ${r.liveSeconds} s), which keeps the system light. A newly opened page fills in within about ${hb} seconds.</div>`;
+    const go = d => { LIVE_PG = Math.max(1, LIVE_PG + d); $('#lgrid').innerHTML = '<div class="spin" style="grid-column:1/-1"></div>'; clearTimeout(livePoll.t); livePoll(examId, my); };
+    if ($('#lpPrev')) $('#lpPrev').onclick = () => go(-1);
+    if ($('#lpNext')) $('#lpNext').onclick = () => go(1);
+    const g = $('#lgrid');
+    const tiles = r.students.filter(s => !s.zoomOnly);
+    if (!tiles.length) g.innerHTML = `<div class="empty" style="grid-column:1/-1">${r.exam.state === 'live' ? 'Nobody is writing right now.' : 'This exam is not live.'}</div>`;
+    else {
+      g.innerHTML = tiles.map(s => {
+        const age = s.seenAt ? (now - s.seenAt) / 1000 : 999, sig = age < hb + 15 ? 'g' : age < 2 * hb + 20 ? 'a' : 'r';
+        const left = Math.max(0, Math.floor((s.deadline - now) / 60000));
+        return `<div class="lc" data-id="${esc(s.id)}"><div class="scr">${s.scr ? `<img class="s" src="${s.scr}">` : (r.exam.screen ? 'Waiting for first frame…' : 'Screen not monitored')}${s.cam ? `<img class="c" src="${s.cam}">` : ''}</div>
+          <div class="inf"><div style="min-width:0"><div class="nm"><span class="sig ${sig}"></span>${esc(s.name)}</div><div class="small muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.email)} · ${left} min left${sig === 'r' ? ' · no signal' : ''}</div></div>
+          ${s.paused ? '<span class="pill p-In-Progress">Paused</span>' : `<span class="pill ${s.violations ? 'p-Returned' : 'p-Verified'}">${s.violations} warn</span>`}</div></div>`;
+      }).join('');
+      g.querySelectorAll('.lc').forEach(c => c.onclick = () => { ZOOM = c.dataset.id; drawZoom(r); });
+      if (ZOOM && $('#ov').classList.contains('on')) drawZoom(r);
+    }
+  } catch (e) { if (my === VIEW) $('#lstat').innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; }
+  const wait = Math.max(1000, 5000 - (Date.now() - t0));
+  clearTimeout(livePoll.t);
+  livePoll.t = setTimeout(() => livePoll(examId, my), wait);
+}
+function drawZoom(r) {
+  const s = r.students.find(x => x.id === ZOOM);
+  if (!s) return;
+  modal(`<div class="between"><h2>${esc(s.name)} <span class="small muted">${esc(s.email)}</span></h2><button class="btn ghost sm" onclick="closeModal()">Close</button></div>
+    <div style="display:grid;grid-template-columns:3fr 1fr;gap:12px;margin-top:10px">
+      <div style="background:#0B2E4F;border-radius:10px;aspect-ratio:16/9;display:grid;place-items:center;color:#9FB3C5">${s.scr ? `<img src="${s.scr}" style="width:100%;height:100%;object-fit:contain">` : 'No screen frame'}</div>
+      <div><div style="background:#0B2E4F;border-radius:10px;aspect-ratio:4/3;display:grid;place-items:center;color:#9FB3C5;overflow:hidden">${s.cam ? `<img src="${s.cam}" style="width:100%">` : 'No camera'}</div>
+      <p class="small"><b>${s.violations}</b> warning(s)<br>Attempt ${esc(s.id)}</p></div></div>`, true);
+  modal.onClose = () => { ZOOM = null; };
+}
+
+
+
+/* ============================ START ============================ */
+SESSION = loadSession();
+if (BOOT && BOOT.session) saveSession(BOOT.session);
+if (API_URL.indexOf('PASTE_') === 0) setTimeout(() => toast('Setup needed: paste the Apps Script /exec URL into API_URL.', 6000), 300);
+if (SESSION && SESSION.token) { api('me').then(r => { SESSION.user = r.user; saveSession(SESSION); shell('exams'); }).catch(e => { if (SESSION) authView(e.message, 'in'); }); $('#app').innerHTML = '<div class="spin"></div>'; }
+else authView('', 'in');
+</script>
+</body>
+</html>

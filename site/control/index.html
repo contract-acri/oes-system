@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ACRI · Master Control</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<script src="/config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --green:#63B72D; --green-d:#4C9420; --green-bg:#EEF7E8;
+  --blue:#166FB1; --blue-l:#3F9FCF; --blue-d:#0E568C; --navy:#0B2E4F; --blue-bg:#EAF3FA;
+  --ink:#1B2733; --muted:#5D6B7A; --line:#DDE6E1; --bg:#F4F8F5; --card:#fff;
+  --red:#C8372D; --red-bg:#FCECEA; --amber:#B86E00; --amber-bg:#FFF4E0; --violet:#5B4BB7; --violet-bg:#EFEDFB;
+  --r:14px; --shadow:0 1px 2px rgba(11,46,79,.06),0 6px 24px rgba(11,46,79,.07);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.55 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+h1,h2,h3{font-family:Montserrat,Inter,sans-serif;color:var(--navy);margin:0;letter-spacing:-.01em}
+button{font:inherit;cursor:pointer} input,textarea,select{font:inherit;color:var(--ink)}
+a{color:var(--blue)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 22px;background:#fff;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.brand img{width:44px;height:44px}
+.org{font-family:Montserrat,sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue)}
+.app{font-family:Montserrat,sans-serif;font-weight:800;font-size:17px;color:var(--navy);line-height:1.15}
+.stripe{height:4px;background:linear-gradient(90deg,var(--blue),var(--blue-l) 45%,var(--green))}
+.who{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.nav{display:flex;gap:4px;padding:0 22px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
+.nav button{border:0;background:none;padding:12px 14px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+.nav button.on{color:var(--navy);border-bottom-color:var(--green)}
+.nav .n{display:inline-block;min-width:20px;padding:0 6px;border-radius:999px;background:var(--red);color:#fff;font-size:11px;margin-left:5px}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 20px 60px}
+.narrow{max-width:460px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:20px}
+.card+.card,.mt{margin-top:16px}
+.eyebrow{font-family:Montserrat,sans-serif;font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--green-d);margin-bottom:5px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.between{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.spacer{flex:1}
+label.f{display:block;font-weight:600;font-size:12.5px;color:var(--navy);margin:12px 0 5px}
+.in{width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;background:#fff;outline:none}
+.in:focus{border-color:var(--blue-l);box-shadow:0 0 0 3px rgba(63,159,207,.16)}
+textarea.in{resize:vertical;min-height:70px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px} .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:0 16px}
+@media (max-width:760px){.g2,.g3{grid-template-columns:1fr}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:9px;padding:9px 15px;font-weight:600;background:var(--blue);color:#fff;white-space:nowrap}
+.btn:hover{background:var(--blue-d)} .btn:disabled{background:#AEBBC6;cursor:not-allowed}
+.btn.green{background:var(--green-d)} .btn.green:hover{background:#3F7E19}
+.btn.red{background:var(--red)} .btn.amber{background:var(--amber)}
+.btn.ghost{background:#fff;color:var(--blue);border:1.5px solid var(--line)} .btn.ghost:hover{background:var(--blue-bg);border-color:var(--blue-l)}
+.btn.sm{padding:6px 11px;font-size:13px} .btn.block{width:100%;margin-top:16px;padding:12px}
+.link{border:0;background:none;color:var(--blue);font-weight:600;padding:0}
+.err{display:none;margin-top:12px;padding:9px 12px;border-radius:9px;background:var(--red-bg);color:var(--red);font-size:13.5px}
+.okm{display:none;margin-top:12px;padding:9px 12px;border-radius:9px;background:var(--green-bg);color:var(--green-d);font-size:13.5px}
+.muted{color:var(--muted)} .small{font-size:12.5px}
+.tabs{display:flex;background:var(--bg);border-radius:10px;padding:4px;margin-bottom:6px}
+.tabs button{flex:1;border:0;background:none;padding:8px;border-radius:8px;font-weight:600;color:var(--muted)}
+.tabs button.on{background:#fff;color:var(--navy);box-shadow:var(--shadow)}
+.tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+@media (max-width:900px){.tiles{grid-template-columns:repeat(2,1fr)}}
+.tile{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.tile b{display:block;font-family:Montserrat,sans-serif;font-size:26px;color:var(--navy)}
+.tile span{font-size:12px;color:var(--muted);font-weight:600}
+.tile.hl{border-color:var(--green);background:var(--green-bg)}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:9px 10px;border-bottom:1.5px solid var(--line);white-space:nowrap}
+.tbl td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl tr.click{cursor:pointer} .tbl tr.click:hover td{background:#F8FBF9}
+.tscroll{overflow-x:auto}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;background:#EEF1F4;color:var(--muted)}
+.p-live,.p-Verified{background:var(--green-bg);color:var(--green-d)}
+.p-upcoming,.p-Submitted,.p-Under-Review{background:var(--amber-bg);color:var(--amber)}
+.p-In-Progress{background:var(--blue-bg);color:var(--blue-d)}
+.p-Sent-to-CoE{background:var(--violet-bg);color:var(--violet)}
+.p-Returned{background:var(--red-bg);color:var(--red)}
+.p-Result-Sent{background:var(--green-d);color:#fff}
+.title{font-weight:700;color:var(--navy)}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;letter-spacing:.06em;background:var(--blue-bg);color:var(--blue-d);padding:2px 7px;border-radius:6px;font-size:12.5px}
+.sw{position:relative;width:42px;height:24px;flex:none;display:inline-block}
+.sw input{opacity:0;width:0;height:0}
+.sw span{position:absolute;inset:0;background:#C9D3DB;border-radius:999px;transition:.2s;cursor:pointer}
+.sw span::before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.sw input:checked+span{background:var(--green)} .sw input:checked+span::before{transform:translateX(18px)}
+.icons{display:flex;gap:4px;flex-wrap:wrap}
+.icons i{font-style:normal;font-size:11px;font-weight:700;padding:2px 6px;border-radius:5px;background:var(--bg);color:var(--muted)}
+.icons i.on{background:var(--blue-bg);color:var(--blue-d)}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line)}
+.chk input{width:18px;height:18px;margin-top:2px;accent-color:var(--green-d)}
+.chk b{display:block;color:var(--navy)}
+.qc{border:1.5px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;background:#fff}
+.qc .hd{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.qc .num{font-family:Montserrat,sans-serif;font-weight:800;color:var(--blue);min-width:34px}
+.opt{display:flex;gap:8px;align-items:center;margin-top:7px}
+.opt input[type=radio]{width:18px;height:18px;accent-color:var(--green-d);flex:none}
+.opt .L{font-weight:700;color:var(--blue);width:16px}
+.rchips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.rchip{display:inline-flex;align-items:center;gap:6px;background:var(--blue-bg);color:var(--blue-d);font-size:12.5px;font-weight:600;padding:4px 6px 4px 10px;border-radius:999px}
+.rchip button{border:0;background:rgba(14,86,140,.12);color:var(--blue-d);border-radius:50%;width:18px;height:18px;line-height:16px;padding:0}
+.note{padding:10px 13px;border-radius:10px;font-size:13.5px;margin-top:12px}
+.note.amber{background:var(--amber-bg);color:#7A4A00} .note.blue{background:var(--blue-bg);color:var(--blue-d)} .note.red{background:var(--red-bg);color:var(--red)} .note.green{background:var(--green-bg);color:var(--green-d)}
+.ans{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:12px;background:#fff}
+.ans .q{white-space:pre-wrap;font-weight:600;color:var(--navy);margin:6px 0 10px}
+.ans .resp{white-space:pre-wrap;background:var(--bg);border-radius:9px;padding:11px 13px;min-height:44px}
+.ans .o{padding:6px 10px;border-radius:8px;margin:3px 0;border:1px solid transparent}
+.ans .o.pick{border-color:var(--blue-l);background:var(--blue-bg)}
+.ans .o.right{color:var(--green-d);font-weight:700}
+.ans .o.pick.wrong{border-color:#E7A39D;background:var(--red-bg)}
+.mk{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.mk input.m{width:90px} .mk input.c{flex:1;min-width:180px}
+.sticky{position:sticky;bottom:0;background:rgba(244,248,245,.96);backdrop-filter:blur(6px);border-top:1px solid var(--line);padding:12px 0;margin-top:18px;z-index:5}
+.ev{display:flex;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.ev b{min-width:150px;color:var(--navy)} .ev.v b{color:var(--red)}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px}
+.gal figure{margin:0;background:var(--bg);border-radius:9px;overflow:hidden;font-size:11.5px;color:var(--muted)}
+.gal img{width:100%;display:block;aspect-ratio:16/10;object-fit:cover;background:#0B2E4F;cursor:zoom-in}
+.gal figcaption{padding:5px 8px}
+.lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:14px}
+.lc{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:zoom-in}
+.lc .scr{position:relative;aspect-ratio:16/9;background:#0B2E4F;display:grid;place-items:center;color:#9FB3C5;font-size:12px}
+.lc .scr img.s{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.lc .scr img.c{position:absolute;right:8px;bottom:8px;width:30%;border-radius:7px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.lc .inf{display:flex;justify-content:space-between;gap:8px;padding:9px 12px;align-items:center}
+.lc .nm{font-weight:700;color:var(--navy);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sig{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;background:#C9D3DB}
+.sig.g{background:var(--green)} .sig.a{background:#E59A00} .sig.r{background:var(--red)}
+.ov{position:fixed;inset:0;background:rgba(11,46,79,.6);display:none;align-items:center;justify-content:center;z-index:50;padding:18px}
+.ov.on{display:flex}
+.box{background:#fff;border-radius:16px;max-width:520px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:92vh;overflow:auto}
+.box.wide{max-width:1200px}
+.box h2{font-size:19px;margin-bottom:8px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.on{opacity:1}
+.spin{width:28px;height:28px;border:3px solid rgba(22,111,177,.2);border-top-color:var(--blue);border-radius:50%;animation:sp .8s linear infinite;margin:30px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{text-align:center;color:var(--muted);padding:34px 10px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.filters button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.filters button.on{border-color:var(--green);background:var(--green-bg);color:var(--green-d)}
+.foot{text-align:center;color:var(--muted);font-size:12px;margin-top:26px}
+
+.clock{font-family:Montserrat,sans-serif;font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums}
+.banner{display:flex;align-items:center;gap:18px;flex-wrap:wrap;border-radius:16px;padding:18px 22px;margin-bottom:18px;color:#fff}
+.banner .big{font-family:Montserrat,sans-serif;font-size:22px;font-weight:800;line-height:1.2}
+.banner .sub{opacity:.9;font-size:14px;margin-top:2px}
+.banner .dot{width:16px;height:16px;border-radius:50%;background:#fff;flex:none;box-shadow:0 0 0 6px rgba(255,255,255,.22)}
+.b-Idle{background:#5D6B7A}.b-Normal{background:#4C9420}.b-Busy{background:#B86E00}.b-Recovering{background:#166FB1}.b-Overloaded{background:#C8372D}
+.b-Overloaded .dot{animation:blink 1s infinite}@keyframes blink{50%{opacity:.25}}
+.seg{display:inline-flex;background:rgba(255,255,255,.18);border-radius:10px;padding:3px}
+.seg button{border:0;background:none;color:#fff;font-weight:700;padding:7px 14px;border-radius:8px}
+.seg button.on{background:#fff;color:var(--navy)}
+.tiles6{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:18px}
+@media (max-width:1100px){.tiles6{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:640px){.tiles6{grid-template-columns:repeat(2,1fr)}}
+.tile small{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+.meter{position:relative;height:10px;border-radius:6px;background:#E7EEEA;margin-top:8px;overflow:visible}
+.meter i{position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:var(--green)}
+.meter .mk{position:absolute;top:-4px;width:2px;height:18px;background:var(--red)}
+.meter .mk.t{background:var(--amber)}
+.cd{font-variant-numeric:tabular-nums;font-weight:700;color:var(--navy);white-space:nowrap}
+.cd.low{color:var(--red)}
+.pri{padding:5px 8px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;background:#fff}
+.sub-row td{background:#F8FBF9;padding:0 10px 14px}
+.inner{border:1px solid var(--line);border-radius:12px;background:#fff;padding:6px 10px;margin-top:4px}
+.inner .tbl td,.inner .tbl th{padding:8px}
+.chart{width:100%;height:auto;display:block}
+.bar{height:8px;border-radius:5px;background:#E7EEEA;overflow:hidden;min-width:120px}
+.bar i{display:block;height:100%}
+.legend2{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:6px}
+.legend2 i{display:inline-block;width:18px;height:3px;vertical-align:middle;margin-right:6px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:14px}
+.kv b{color:var(--navy)}
+.stagebar{display:flex;gap:6px;align-items:flex-end;height:180px;border-bottom:1.5px solid var(--line);padding:0 4px;position:relative}
+.stagebar .sb{flex:1;border-radius:6px 6px 0 0;min-width:14px;position:relative}
+.stagebar .sb span{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--muted);white-space:nowrap}
+.stagelbl{display:flex;gap:6px;padding:4px 4px 0}
+.stagelbl div{flex:1;text-align:center;font-size:11px;color:var(--muted);min-width:14px}
+.thr{position:absolute;left:0;right:0;border-top:2px dashed var(--red)}
+.btn.red:disabled,.btn.amber:disabled,.btn.green:disabled{background:#AEBBC6}
+.big2{font-family:Montserrat,sans-serif;font-size:40px;font-weight:800;color:var(--navy);line-height:1}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="ov" id="ov"><div class="box" id="ovbox"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+/* ==========================================================================
+   ACRI Online Examination — Master Control (oes.acriindia.org.in/control)
+   Live load, automatic pause/resume, time extensions, schedule check and
+   the built-in stress test. Signs in with Controller of Examinations accounts.
+   ========================================================================== */
+const API_URL = window.ACRI_API_URL || 'https://script.google.com/macros/s/AKfycbzE-HjXSg1EomncP1zQD-U-NPfv01q-28Uz7pyn-TrHLFfZ7ukxxXuNFs0x97KBMI27WA/exec';
+const EMBLEM = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHAAAABwCAMAAADxPgR5AAAAkFBMVEX+/v5quCtWtCtntRfJ5LKv2I+JxlFYshmRy2t4wU7r9eSl03jk8dhsvUnW68ZMrRPm8903qhjZ7Myb0HbT6cG23aRFriW94Kjc7tLi8NPo8+Cb0oeCwTt6wDh8xWXd8NJbuEShzm7c7tbg7tI9rCGTzoTB4Jzd8NaCvjjB36Pb8M294J7A3pzi7tbg7s8AAAADrzjnAAAAMHRSTlMA/////v//////Mf9v/9D/V/+x/+3///+TjUf/////kf//fZT///97//+r//98pABIHgpDAAAK6UlEQVR42u1aV2OsuA7G3aYPZVoyyUk5Zcvd///zrmQbMAxkPCfZt/VDAgxIlvSpWHaS/DfCkTYHoaUhbhRGt4K//VvMat4aqqqqosgKRkGIUpVSRAr+5dyehaHAqtCCN/X0OC9BYkIrRfSh/kJFIjdqHni+/vuJa6Iqor9IzqZFbuJ1PodMzN8qhQHlivOn2ZWaVuShWcr0yJhcvopykiz/FLsjsCv6a/z8YoRcc0xyASzFJ/g9rLJLEsnQK5hYMzepfpslLyq6+i1n3hHTlR/PGVGy+R1+er/X6eovmWfI/l5HGSjgfiG7YldswfzRC8j0xgsCDHynWwpabVFLzsgMma7Axo//SUXu8kpd0X7zxxwZSuQotylkjN2h1qddsW720iIRhXsBQ3kJy3XIkWiOZ7Mz62iRLLP/0CU0MMyCh9eTg1nF8St2G+ZDHsKhlP3AP9z55IYoudxEVRw/5361NSLjglkTuofrCkmjOJotfs79rFTArBPMXk4P1zlmt/GyOSlQ3sWrT7KcV2KMcpvwSB9vIUfvzLo6S0tbDrR1yrNhFu4hP62myk3pvb/vinTjOwGKvGT2ez4WHcn4UG9EgY6Q8oPkR2mzZT7Ga3YR7BFvZO49jSdHdvkbeAm2JQpnj+kmw+K933YIoEo4UE19TMtdqMGHZfKBIbNtqOo5YISURGbcfSSROM/h7h8k3lmokkcUIS+R+aOTkGt4U/I52P5Y53fYFbN7YgHIJNigZFKiNNxFNsl+JEnrJgFPQTRADnFaZldRvSFkve749l5exWjLErEhsx+gWMtdswwfZUQrYHUgGKazDLPDkCgXUV2sK/Vh932BzGEg+TJPOixkgG56eUECnZbaKRYjzdtpuLbJa+nBK4B6pXRRKZFpnINED0rtnFfjPBgZI81YeVzlrW7NZ552S4RK/PQylUuSXJdO/lk2Xa+WAtk1hMu9R0zKha+wnUStFytJLsHsO2lriDxg0OAF0ZPEUBwPi47TUsko4MFbWAHQWrz6x9H/C/+WToKLcakBtMdIg6gkiE/LEH1fHi7j/HIIeYyVGyI2g4A+/MvpUuPUufN+K0CN8cpBBc32QoYsyWQjx+TxRsI8UpNfS5/vRwwjLZWFqUAq7kEh7PTloMgOpoYfoA1eqtZ/EFiUdaMcM6Cm9FsQbTH+u5yqLYFD4kKHBI9rlZzgmCdYa3gOWWZf98UTkjFBai7nQBW7h1kdD2sEN7WDATuo0fQq4xX3lb6VvWVvUjlSaZJVYH7pPhSVzGaQliwMK8X+NYgw8BUfy0ouslaMVYrJAR8j+mWSv+Rk9IEsy8SQbTIgMQtxPEz+zXuYdmtYdslyXjk3nNsJ8sEXzOAhNUqUlpw/zz/ocO0WWi30jIeF05+4qJNUm4sUebBc0s0YZJntLHgBOHqGt2TSZbIwGTohrxfOzwON/lzJnMp6sgj8269R8LLFOUifLNkUETTZKuMCndZ7E6iiy2eLMswIx8FqSs8KYeSfGjX8ij/5G1/gnLrueVqSjBbtR4w2bqoijMWA0WaMksgeghFRhxZId4Pn2HGxv7iB2qyzYhbIJTuNXj9o139glz75FPrPQeI4WZ2qsRBWQYpIh0tj12zuJ9aMIWVgU9B0ztDFMowVUivkYUZgqtZxKeHVI9bNSHL45S/lgh/qIQtJzY2YjnE0YAjh2uq0FahT91xYc7n36r7i3gZKa08YXuOSWswElMaqctBuOdVO02vos3inBFf9oCuO8loUiLTjHspKCCsgfNCSE74BLPLACM2UPAfMiGmJNekOCP5BFK14V46mqgEqs8IH5nTohsCa8J9ZRZQph5mbMVfZ0XrUPOwmj3TGygYPSKF3KCfZqYH/C4Y8DRT3bKRrgAE+KRGj0eeoeXo/TqWipau5R5r1H86xBOAIOpjFfA3BOwwDSklQ9JHzbqr4lOEFmpP8Gbj+DycVDeKC9VyVHYH80M+ilBJpS0Xvh/PKB6iiVMLAi3D57PxZydqREmGscTffZuWa8a8ZB0fqjEedhuu89ilEa1+v1DlGpnyIN5RgqVLC6xY+KiynSu8XU/J1YQC6goTyJJu7iZpSDYdGLaVKTY2cnNDpRWgRH4WD+LxBlPt0RYMKHyUALYJVygm11kqTcqZZjI9Ae4oGIRVfoqRoj6iBoNKVrrwYQ3dGqF2JYXrLvbg2aGnRSkLzZXAgbhWMUJNCaOMnca5tAm3cmo6MYqae4ZgrgLrU7byl5A0jIZW73nMYV2FYgDc5VLPGaz7XJOhCaWyUiznDQcIOlGKqHle2vBuAyx1qAICmvxJw9DJRWIjCfZHLilAATu5qBK2mUsozHG0oIEpAh+3kHEH7fI0TxgfUQ8TQkKH/Vtg3AErgp8ghLaUl0iLqKa34KsOjNvJg+Y4pCgCkwXoENij4oJbF8F3uXhujxdF6ayV6Jy+prPtKr9J6QOncLTgNo+6bRp3KftZKDEdQuJSZbutE6HJKkrOV6Mkvcgq6tkyjgFivU1TWUEEtJKRB9VKCIZWNZMRblM57MI13fLOfN/81vizbwRcR2hRJtOkQygKGAUmOlRyCTsC2Q2vIVSAcQpveHRcNWKQvuSBTAYzBR5HeBrsZSkOSrfc5Y3iPgVstlqE/fLYI05MvpSBMUNLnZRDvLFbRBkEUCzRal7ZGdv51FqBSqpZN0CE9BQl4CAktgroSs5600yAs0ejIkVLuU4qhYQsZGsrw0nViYW5CzUo/L4UkOFc05HrUdFGjSR13z6+3sZzPVwaHlYbX48VfLPxiq21EkRGFZhzEAoV+rnFKpcGwTSNa6vlYohY0ao+qcByNbesJv3QQVtrrDZXeSLFZ638f1vc3NqJs+Jrn1NbCi7bXW3ISQJNsrGYOi5bQZnNT2ZCpDgF47SSue6w1NVOWGDFTjwvuIq7fb6gb+TgDd7+y9hIWqOsmxFhzjNsf8gy9Ug/uTq32LSFjEb0WZ9wSP3JPQ3qO3DfLNhTqRUoXPdcy6LNF6pSHPAYFl3Gb5LMGnHlv7rIiLDeSfq7fm4ib9aL6XeRnvYdJgTHVjWOkNdisZKc0jdth92wqbmEYLyBfdDC/x8JGD1Ys/EWkLfSiR/scF08ny9H7LHi6atHqSBHrBcPIfdCXqyb06/7bfdFmBE/UaYeVHnSsiA/7gN++jYXotSbOlNb3+L4b3W9BdIhv+m4jRmr0cX1fqng/xOXhezEqNrYtu32U9+t7MdqxjS1b8P6YGfcTashnFGq1FYPU8k6NvnywD9zQfQTsJqcQUQaUH6mrivCNyfWPMR5BPjyH9rAr4l0/wimaG5vO29vcK6jZ3zbhKeJAhtk9RdWnwLC/WWv/ijkAcpvjkOtfb8uXxeB487DJuBMXZ8Iykp89TnOMQM0NE95xoAaQ82HQ4vsILxR3HRmCNZG4lTA+jhGa3XcoitPqqb6RMD4wNDdK/pncNY5mt30OS+8/xoyIhsvipNnTcdv1t92e33vGbIS1qejDqt5eP8BMA3tf+ncPt/YETiee1424XxXiDfpJkn/q/OWOPjyvGvHn2mHUTx73xHAIRz7p1WFc8MSrMvYsJPs0O3dktKgq0vJFEjaLvo4mFZNfdRoaqcGhY1GunvU5c+iRQhc+a5KvG6k96KwoNGEPJbT+cR8+rY/8gK11BTsK2dcf9U4aoQs47A1HybH1ZHdP4Jy5gnbxH8/JvzVSOEnewuF5O2B3Ac6Zp8l/Yzb+DwPkaZxlmml3AAAAAElFTkSuQmCC';
+const PORTAL = 'control';
+const PORTAL_NAME = 'Master Control';
+const PRISTINE = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+const BOOT = window.__ACRI_BOOT || null;
+const SKEY = 'acri_control_session';
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pillCls = s => 'pill p-' + String(s).replace(/\s+/g, '-');
+let SESSION = null, VIEW = 0, EXAMS = [], clockOffset = 0;
+
+function loadSession() { if (BOOT && BOOT.session) return BOOT.session; try { return JSON.parse(localStorage.getItem(SKEY) || 'null'); } catch (e) { return null; } }
+function saveSession(s) { SESSION = s; try { s ? localStorage.setItem(SKEY, JSON.stringify(s)) : localStorage.removeItem(SKEY); } catch (e) {} }
+
+async function api(action, data) {
+  const body = Object.assign({ action, token: SESSION && SESSION.token }, data || {});
+  const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+  const j = await res.json();
+  if (j.serverTime) clockOffset = j.serverTime - Date.now();
+  if (!j.ok) {
+    if (j.error === 'SESSION_EXPIRED') { saveSession(null); authView('Your session expired. Please sign in again.'); throw new Error('Session expired.'); }
+    throw new Error(j.error || 'Something went wrong.');
+  }
+  return j;
+}
+function toast(m, ms) { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), ms || 2600); }
+function modal(html, wide) { $('#ovbox').className = 'box' + (wide ? ' wide' : ''); $('#ovbox').innerHTML = html; $('#ov').classList.add('on'); }
+function closeModal() { $('#ov').classList.remove('on'); modal.onClose && modal.onClose(); modal.onClose = null; }
+$('#ov').addEventListener('click', e => { if (e.target.id === 'ov') closeModal(); });
+function showErr(id, m) { const e = $(id); if (e) { e.textContent = m || ''; e.style.display = m ? 'block' : 'none'; } }
+function busy(btn, on, label) { if (!btn) return; if (on) { btn.dataset.l = btn.innerHTML; btn.disabled = true; btn.innerHTML = label || 'Working…'; } else { btn.disabled = false; btn.innerHTML = btn.dataset.l || btn.innerHTML; } }
+function confirmBox(title, text, okLabel, cls, withNote, notePh) {
+  return new Promise(resolve => {
+    modal(`<h2>${esc(title)}</h2><p class="muted">${text}</p>${withNote ? `<textarea class="in" id="cbn" rows="4" placeholder="${esc(notePh || '')}"></textarea>` : ''}
+      <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn ghost" id="cbx">Cancel</button><button class="btn ${cls || ''}" id="cby">${esc(okLabel)}</button></div>`);
+    $('#cbx').onclick = () => { closeModal(); resolve(null); };
+    $('#cby').onclick = () => { const v = withNote ? $('#cbn').value : true; closeModal(); resolve(v); };
+  });
+}
+const GRADES = [['O', 'Outstanding', 10, 90], ['A+', 'Excellent', 9, 80], ['A', 'Very Good', 8, 70], ['B+', 'Good', 7, 60], ['B', 'Above Average', 6, 55], ['C', 'Average', 5, 50], ['P', 'Pass', 4, 40], ['F', 'Fail', 0, 0]];
+function gradeOf(bands, total, max) {
+  const b = bands || {};
+  const pct = max ? Math.round(total / max * 10000) / 100 : 0;
+  const g = GRADES.find(x => pct >= (x[0] === 'F' ? 0 : (b[x[0]] != null ? Number(b[x[0]]) : x[3]))) || GRADES[7];
+  return { pct, grade: g[0], meaning: g[1], gp: g[2], result: g[0] === 'F' ? 'Fail' : 'Pass' };
+}
+function openPdf(b64, name) {
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+  const w = window.open(url, '_blank');
+  if (!w) modal(`<h2>${esc(name)}</h2><p class="muted">Your browser blocked the new tab.</p><div class="row" style="justify-content:flex-end"><a class="btn" href="${url}" download="${esc(name)}">Download PDF</a><button class="btn ghost" onclick="closeModal()">Close</button></div>`);
+}
+function brand(sub) { return `<div class="brand"><img src="${EMBLEM}" alt="ACRI"><div><div class="org">Ahmedabad Centre for Research &amp; Innovation</div><div class="app">${sub}</div></div></div>`; }
+
+function openFullWindow() {
+  const tag = '<script>window.__ACRI_BOOT=' + JSON.stringify({ session: SESSION }).replace(/</g, '\\u003c') + ';<\/script>';
+  const html = /<head[^>]*>/i.test(PRISTINE) ? PRISTINE.replace(/<head[^>]*>/i, m => m + tag) : tag + PRISTINE;
+  const w = window.open(URL.createObjectURL(new Blob([html], { type: 'text/html' })), '_blank');
+  if (!w) toast('Allow pop-ups for this site to open the full window.');
+}
+
+
+
+/* ============================ AUTH ============================ */
+
+function authView(msg, tab) {
+  VIEW++;
+  $('#app').innerHTML = `<header class="top">${brand(PORTAL_NAME)}</header><div class="stripe"></div>
+  <main class="wrap narrow"><div class="card" style="margin-top:20px">
+    <div class="tabs"><button id="t1" class="${tab === 'req' ? '' : 'on'}">Sign in</button><button id="t2" class="${tab === 'req' ? 'on' : ''}">Request account</button></div>
+    <div id="authBody"></div></div>
+    <div class="foot">Office of the Controller of Examinations · ACRI Online Examination System</div></main>`;
+  $('#t1').onclick = () => authView('', 'in');
+  $('#t2').onclick = () => authView('', 'req');
+  if (tab === 'req') {
+    $('#authBody').innerHTML = `<p class="small muted" style="margin:6px 0 0">Your request is reviewed by ACRI. You can sign in once it is activated.</p>
+      <label class="f">Full name</label><input class="in" id="rn">
+      <label class="f">Email</label><input class="in" id="re" type="email">
+      <div class="g2"><div><label class="f">Designation</label><input class="in" id="rd"></div><div><label class="f">Phone</label><input class="in" id="rp"></div></div>
+      <div class="g2"><div><label class="f">Password</label><input class="in" id="rw" type="password" placeholder="At least 8 characters"></div><div><label class="f">Confirm password</label><input class="in" id="rw2" type="password"></div></div>
+      <button class="btn green block" id="rgo">Request account</button><div class="err" id="ae"></div><div class="okm" id="ao"></div>`;
+    $('#rgo').onclick = async () => {
+      showErr('#ae'); if ($('#rw').value !== $('#rw2').value) return showErr('#ae', 'Passwords do not match.');
+      const b = $('#rgo'); busy(b, true, 'Sending…');
+      try {
+        const r = await api('requestAccount', { portal: PORTAL, name: $('#rn').value, email: $('#re').value, designation: $('#rd').value, phone: $('#rp').value, password: $('#rw').value });
+        const o = $('#ao'); o.textContent = r.message; o.style.display = 'block'; b.style.display = 'none';
+      } catch (e) { showErr('#ae', e.message); busy(b, false); }
+    };
+  } else {
+    $('#authBody').innerHTML = `<label class="f">Email</label><input class="in" id="le" type="email" autocomplete="username">
+      <label class="f">Password</label><input class="in" id="lp" type="password" autocomplete="current-password">
+      <button class="btn block" id="lgo">Sign in</button><div class="err" id="ae"></div>`;
+    const go = async () => {
+      showErr('#ae'); const b = $('#lgo'); busy(b, true, 'Signing in…');
+      try { const r = await api('login', { portal: PORTAL, email: $('#le').value, password: $('#lp').value }); saveSession({ token: r.token, user: r.user }); shell('exams'); }
+      catch (e) { showErr('#ae', e.message); busy(b, false); }
+    };
+    $('#lgo').onclick = go;
+    $('#lp').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    if (msg) showErr('#ae', msg);
+  }
+}
+
+
+
+/* ============================ SHELL ============================ */
+
+let NAVSEL = 'live', CS = null, OPEN_EXAM = '', OPEN_ATTS = [];
+function shell(view, arg) {
+  if (view === 'exams') view = 'live';
+  NAVSEL = view;
+  if (!$('#nav')) {
+    $('#app').innerHTML = `<header class="top">${brand(PORTAL_NAME)}
+      <div class="who"><span class="clock" id="clk"></span><span>${esc(SESSION.user.name)}</span>
+      <button class="btn ghost sm" id="out">Sign out</button></div></header>
+      <div class="stripe"></div>
+      <nav class="nav" id="nav"><button data-v="live">Live control</button><button data-v="plan">Schedule check</button><button data-v="stress">Stress test</button><button data-v="settings">Settings &amp; log</button></nav>
+      <main class="wrap" id="view" style="max-width:1320px"></main>`;
+    $('#nav').querySelectorAll('button').forEach(b => b.onclick = () => shell(b.dataset.v));
+    $('#out').onclick = async () => { try { await api('logout'); } catch (e) {} saveSession(null); authView('', 'in'); };
+    if ($('#full')) $('#full').onclick = openFullWindow;
+    setInterval(tick1s, 1000);
+  }
+  $('#nav').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === NAVSEL));
+  VIEW++;
+  window.scrollTo(0, 0);
+  $('#view').innerHTML = '<div class="spin"></div>';
+  ({ live: liveView, plan: planView, stress: stressView, settings: settingsView })[view](arg);
+}
+
+const nowS = () => Date.now() + clockOffset;
+const istTime = (ms, sec) => new Date(ms).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', second: sec ? '2-digit' : undefined });
+function fmtDur(s) {
+  s = Math.max(0, Math.floor(s));
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0');
+}
+
+/** Every second: IST clock and all live countdowns (data-dl = deadline, data-pa = paused at). */
+function tick1s() {
+  const c = $('#clk'); if (c) c.textContent = istTime(nowS(), true) + ' IST';
+  document.querySelectorAll('[data-dl]').forEach(el => {
+    const dl = Number(el.dataset.dl), pa = Number(el.dataset.pa || 0);
+    const left = Math.floor(((pa || nowS()) > 0 ? dl - (pa || nowS()) : 0) / 1000);
+    el.textContent = fmtDur(left) + (pa ? ' frozen' : '');
+    el.classList.toggle('low', !pa && left < 300);
+    el.style.color = pa ? 'var(--muted)' : '';
+  });
+  document.querySelectorAll('[data-eta]').forEach(el => {
+    const eta = Number(el.dataset.eta);
+    el.textContent = eta ? 'resumes ~' + istTime(eta) + ' (' + fmtDur((eta - nowS()) / 1000) + ')' : 'waiting for capacity';
+  });
+}
+
+/* ============================ LIVE CONTROL ============================ */
+
+async function liveView() {
+  const my = VIEW;
+  $('#view').innerHTML = `<div id="ban"></div><div class="tiles6" id="tiles"></div>
+    <div class="card"><div class="between"><div><div class="eyebrow">Load over time</div><h2 style="font-size:18px">Share of usable capacity in use</h2></div><span class="small muted" id="upd"></span></div><div id="chart"></div></div>
+    <div class="card"><div class="between"><div><div class="eyebrow">Exams now and in the next 24 hours</div><h2 style="font-size:18px">Live exams</h2></div>
+      <div class="row"><button class="btn amber sm" id="pauseAll">Pause all exams</button><button class="btn green sm" id="resumeAll">Resume all</button></div></div>
+      <div id="exams"></div></div>
+    <div class="card"><div class="eyebrow">Recent control actions</div><div id="logmini"></div></div>`;
+  $('#pauseAll').onclick = () => pauseDialog({ all: true }, 'all running exams');
+  $('#resumeAll').onclick = async () => {
+    if (!(await confirmBox('Resume everyone?', 'Every paused student resumes now and gets their paused time back. Exams held by you are released for new starts.', 'Resume all', 'green'))) return;
+    doAction({ op: 'resume', all: true });
+  };
+  livePoll(my, true);
+}
+
+async function livePoll(my, force) {
+  if (my !== VIEW) return;
+  const t0 = Date.now();
+  try {
+    const r = await api('controlState', { force: !!force });
+    if (my !== VIEW) return;
+    CS = r.state;
+    drawLive(CS);
+    if (OPEN_EXAM) await loadStudents(OPEN_EXAM, my);
+  } catch (e) { if (my === VIEW && $('#upd')) $('#upd').innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; }
+  setTimeout(() => livePoll(my), Math.max(1500, 5000 - (Date.now() - t0)));
+}
+
+function statusText(st) {
+  const u = st.load.util, auto = st.mode === 'Auto';
+  return {
+    Idle: ['No exam is running', 'Master Control is watching and will act when students start writing.'],
+    Normal: ['System normal', u + '% of usable capacity in use. ' + st.load.active + ' student(s) writing.'],
+    Busy: ['Busy — close to the limit', u + '% of usable capacity in use. ' + (auto ? 'Auto will pause students if load passes ' + st.cfg.pauseAt + '%.' : 'Manual mode: watch closely.')],
+    Recovering: ['Recovering', st.load.paused + ' student(s) paused. ' + (auto ? 'They resume automatically, oldest first, as capacity frees up.' : 'Manual mode: resume them when ready.')],
+    Overloaded: ['Overloaded', (st.load.healthBad ? 'Students are seeing slow responses (' + st.metrics.cliLat + ' ms). ' : u + '% of usable capacity in use. ') + (auto ? 'Auto is pausing students and holding new starts.' : 'Manual mode: pause an exam or switch to Auto.')]
+  }[st.status];
+}
+
+function drawLive(st) {
+  const [h, sub] = statusText(st);
+  $('#ban').innerHTML = `<div class="banner b-${st.status}"><span class="dot"></span><div style="flex:1;min-width:240px"><div class="big">${esc(h)}</div><div class="sub">${esc(sub)}${st.stress ? ' · A stress test is running — automatic actions are paused.' : ''}</div></div>
+    <div><div class="sub" style="margin:0 0 4px">Control mode</div><div class="seg"><button data-m="Auto" class="${st.mode === 'Auto' ? 'on' : ''}">Auto</button><button data-m="Manual" class="${st.mode === 'Manual' ? 'on' : ''}">Manual</button></div></div></div>`;
+  $('#ban').querySelectorAll('[data-m]').forEach(b => b.onclick = async () => {
+    if (b.dataset.m === st.mode) return;
+    try { await api('controlSettings', { values: { mode: b.dataset.m } }); toast('Control mode: ' + b.dataset.m); livePoll(VIEW, true); } catch (e) { toast(e.message); }
+  });
+  const cap = st.capacity, m = st.metrics, u = st.load.util;
+  const ucol = st.status === 'Overloaded' ? 'var(--red)' : u > st.cfg.target ? 'var(--amber)' : 'var(--green)';
+  $('#tiles').innerHTML = `
+    <div class="tile"><span>Students writing</span><b>${st.load.active}</b><small>${st.load.connected} connected in the last 45 s</small></div>
+    <div class="tile ${st.load.paused ? 'hl' : ''}"><span>Paused</span><b>${st.load.paused}</b><small>${st.load.paused ? 'time frozen, extended on resume' : 'nobody paused'}</small></div>
+    <div class="tile"><span>Load</span><b style="color:${ucol}">${u}%</b><div class="meter"><i style="width:${Math.min(100, u / 1.5)}%;background:${ucol}"></i><span class="mk" style="left:${st.cfg.pauseAt / 1.5}%"></span><span class="mk t" style="left:${st.cfg.target / 1.5}%"></span></div><small>${st.load.rps} of ${cap.usable} req/s usable</small></div>
+    <div class="tile"><span>Capacity at once</span><b>${cap.students.live}</b><small>live-proctored · ${cap.students.proctored} with snapshots · ${cap.students.basic} basic${cap.estimated ? '<br><b style="color:var(--amber)">Estimate — run a stress test</b>' : ''}</small></div>
+    <div class="tile"><span>Response time</span><b>${m.cliLat ? (m.cliLat / 1000).toFixed(1) + ' s' : '—'}</b><small>seen by students · server ${m.avgMs} ms · ${m.rps} req/s</small></div>
+    <div class="tile"><span>Errors (1 min)</span><b style="color:${m.errRate > 0.05 ? 'var(--red)' : 'var(--navy)'}">${(m.errRate * 100).toFixed(1)}%</b><small>${m.n} requests sampled</small></div>`;
+  $('#upd').textContent = 'Updated ' + istTime(st.now, true) + ' IST · refreshes every 5 s';
+  $('#chart').innerHTML = utilChart(st.hist || [], st.cfg);
+  drawExamTable(st);
+  $('#logmini').innerHTML = logTable((st.log || []).slice(0, 6));
+}
+
+function utilChart(hist, cfg) {
+  const W = 1000, H = 220, L = 46, R = 12, T = 12, B = 28;
+  if (hist.length < 2) return `<div class="empty" style="padding:28px">The chart fills in as Master Control runs (one point every 10 seconds while this page is open, every minute otherwise).</div>`;
+  const t0 = hist[0].t, t1 = hist[hist.length - 1].t;
+  const ymax = Math.max(120, cfg.pauseAt + 10, ...hist.map(h => h.u + 10));
+  const x = t => L + (t - t0) / Math.max(1, t1 - t0) * (W - L - R), y = v => T + (1 - v / ymax) * (H - T - B);
+  const pts = hist.map(h => x(h.t).toFixed(1) + ',' + y(h.u).toFixed(1)).join(' ');
+  const area = `${x(t0)},${y(0)} ${pts} ${x(t1)},${y(0)}`;
+  const grid = [0, 25, 50, 75, 100].filter(v => v <= ymax).map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="#E3EAE6"/><text x="${L - 8}" y="${y(v) + 4}" text-anchor="end" font-size="12" fill="#5D6B7A">${v}%</text>`).join('');
+  const pauseBands = hist.filter(h => h.p > 0).map((h, i, a) => `<rect x="${x(h.t) - 2}" y="${T}" width="5" height="${H - T - B}" fill="#166FB1" opacity="0.10"/>`).join('');
+  const lab = [t0, (t0 + t1) / 2, t1].map((t, i) => `<text x="${x(t)}" y="${H - 8}" text-anchor="${['start', 'middle', 'end'][i]}" font-size="12" fill="#5D6B7A">${istTime(t)}</text>`).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Capacity used over time">
+    ${grid}${pauseBands}
+    <line x1="${L}" x2="${W - R}" y1="${y(cfg.pauseAt)}" y2="${y(cfg.pauseAt)}" stroke="#C8372D" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <line x1="${L}" x2="${W - R}" y1="${y(cfg.target)}" y2="${y(cfg.target)}" stroke="#B86E00" stroke-width="1.5" stroke-dasharray="3 5"/>
+    <polygon points="${area}" fill="#166FB1" opacity="0.10"/>
+    <polyline points="${pts}" fill="none" stroke="#166FB1" stroke-width="2.5" stroke-linejoin="round"/>
+    ${lab}</svg>
+    <div class="legend2"><span><i style="background:#166FB1"></i>Capacity in use</span><span><i style="border-top:2px dashed #C8372D;height:0"></i>Pause at ${cfg.pauseAt}%</span><span><i style="border-top:2px dashed #B86E00;height:0"></i>Target ${cfg.target}%</span><span><i style="background:rgba(22,111,177,.25);height:10px;width:10px"></i>Students paused</span></div>`;
+}
+
+function drawExamTable(st) {
+  const box = $('#exams');
+  if (box.contains(document.activeElement) && document.activeElement.tagName === 'SELECT') return;
+  if (!st.exams.length) { box.innerHTML = '<div class="empty">No exams are running or scheduled in the next 24 hours.</div>'; return; }
+  box.innerHTML = `<div class="tscroll"><table class="tbl mt"><thead><tr><th>Exam</th><th>Closes in</th><th>Writing</th><th>Paused</th><th>Expected</th><th>Load share</th><th>Priority</th><th></th></tr></thead><tbody>
+    ${st.exams.map((e, i) => `<tr>
+      <td><div class="title">${esc(e.title)}${e.hold ? ' <span class="pill p-Returned">Held</span>' : ''}</div><div class="small muted"><span class="code">${esc(e.code)}</span> ${esc(e.startIST)} → ${esc(e.endIST)} · <span class="${pillCls(e.state)}" style="padding:1px 7px">${e.state}</span></div></td>
+      <td>${e.state === 'live' ? `<span class="cd" data-dl="${e.end}"></span>` : '<span class="small muted">—</span>'}</td>
+      <td><b>${e.active}</b></td><td>${e.paused ? `<b style="color:var(--blue)">${e.paused}</b>` : '0'}</td>
+      <td class="small">${e.expected || '—'}${e.registered ? `<br><span class="muted">${e.registered} registered</span>` : ''}</td>
+      <td><div class="bar"><i style="width:${Math.min(100, e.loadPct)}%;background:${e.loadPct > 60 ? 'var(--amber)' : 'var(--green)'}"></i></div><span class="small muted">${e.loadPct}%</span></td>
+      <td><select class="pri" data-pr="${i}">${['High', 'Normal', 'Low', 'Never pause'].map(p => `<option ${p === e.priority ? 'selected' : ''}>${p}</option>`).join('')}</select></td>
+      <td><div class="row" style="flex-wrap:nowrap">
+        ${e.active ? `<button class="btn ghost sm" data-pa="${i}">Pause</button>` : ''}${e.paused || e.hold ? `<button class="btn ghost sm" data-re="${i}" style="color:var(--green-d)">Resume</button>` : ''}
+        ${e.active + e.paused ? `<button class="btn ghost sm" data-ex="${i}">+ Time</button><button class="btn ${OPEN_EXAM === e.id ? '' : 'ghost'} sm" data-st="${i}">Students ${OPEN_EXAM === e.id ? '▴' : '▾'}</button>` : ''}</div></td></tr>
+      ${OPEN_EXAM === e.id ? `<tr class="sub-row"><td colspan="8"><div class="inner" id="studs">${studentsTable(OPEN_ATTS)}</div></td></tr>` : ''}`).join('')}
+  </tbody></table></div>
+  <p class="small muted" style="margin:10px 0 0">When the system is overloaded, Auto pauses <b>Low</b> priority exams first, then Normal, then High — newest starters first, and never anyone with under 5 minutes left. <b>Never pause</b> exams are not touched.</p>`;
+  const ex = st.exams;
+  box.querySelectorAll('[data-pr]').forEach(s => s.onchange = async () => {
+    try { await api('controlPriority', { examId: ex[s.dataset.pr].id, priority: s.value }); toast('Priority saved'); s.blur(); } catch (e) { toast(e.message); }
+  });
+  box.querySelectorAll('[data-pa]').forEach(b => b.onclick = () => pauseDialog({ examId: ex[b.dataset.pa].id }, '“' + ex[b.dataset.pa].title + '”'));
+  box.querySelectorAll('[data-re]').forEach(b => b.onclick = () => doAction({ op: 'resume', examId: ex[b.dataset.re].id }));
+  box.querySelectorAll('[data-ex]').forEach(b => b.onclick = () => extendDialog({ examId: ex[b.dataset.ex].id }, 'every student in “' + ex[b.dataset.ex].title + '”'));
+  box.querySelectorAll('[data-st]').forEach(b => b.onclick = async () => {
+    const id = ex[b.dataset.st].id;
+    OPEN_EXAM = OPEN_EXAM === id ? '' : id; OPEN_ATTS = [];
+    drawExamTable(CS);
+    if (OPEN_EXAM) { await loadStudents(OPEN_EXAM, VIEW); }
+  });
+  bindStudentButtons();
+  tick1s();
+}
+
+async function loadStudents(examId, my) {
+  try {
+    const r = await api('controlAttempts', { examId });
+    if (my !== VIEW || OPEN_EXAM !== examId) return;
+    OPEN_ATTS = r.attempts;
+    const el = $('#studs'); if (el) { el.innerHTML = studentsTable(OPEN_ATTS); bindStudentButtons(); tick1s(); }
+  } catch (e) { toast(e.message); }
+}
+
+function studentsTable(list) {
+  if (!list.length) return '<div class="empty" style="padding:16px">Loading students…</div>';
+  const now = nowS();
+  return `<table class="tbl"><thead><tr><th>Student</th><th>Started</th><th>Time left</th><th>Status</th><th>Warnings</th><th>Extra time</th><th></th></tr></thead><tbody>
+    ${list.map((a, i) => {
+      const age = a.seenAt ? (now - a.seenAt) / 1000 : 999;
+      const status = a.pausedAt ? `<span class="pill p-In-Progress">Paused</span> <span class="small muted" data-eta="${a.eta}"></span>${a.reason && !/^Auto/.test(a.reason) ? `<div class="small muted">${esc(a.reason)}</div>` : ''}`
+        : age < 45 ? '<span class="pill p-Verified">Writing</span>' : '<span class="pill p-Returned">No signal</span>';
+      return `<tr><td><div class="title">${esc(a.name)}</div><div class="small muted">${a.rollNo ? esc(a.rollNo) + ' · ' : ''}${esc(a.email)}</div></td>
+        <td class="small">${esc(a.started)}</td><td><span class="cd" data-dl="${a.deadline}" data-pa="${a.pausedAt || 0}"></span></td><td>${status}</td>
+        <td>${a.violations ? `<b style="color:var(--red)">${a.violations}</b>` : '0'}</td><td class="small">${a.extendedMin ? '+' + a.extendedMin + ' min' : '—'}</td>
+        <td><div class="row" style="flex-wrap:nowrap">${a.pausedAt ? `<button class="btn ghost sm" data-sre="${i}" style="color:var(--green-d)">Resume</button>` : `<button class="btn ghost sm" data-spa="${i}">Pause</button>`}
+          <button class="btn ghost sm" data-s5="${i}">+5 min</button><button class="btn ghost sm" data-sx="${i}">+ Time</button></div></td></tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+function bindStudentButtons() {
+  const L = OPEN_ATTS;
+  document.querySelectorAll('[data-spa]').forEach(b => b.onclick = () => pauseDialog({ attemptId: L[b.dataset.spa].id }, L[b.dataset.spa].name));
+  document.querySelectorAll('[data-sre]').forEach(b => b.onclick = () => doAction({ op: 'resume', attemptId: L[b.dataset.sre].id }));
+  document.querySelectorAll('[data-s5]').forEach(b => b.onclick = () => doAction({ op: 'extend', attemptId: L[b.dataset.s5].id, minutes: 5 }));
+  document.querySelectorAll('[data-sx]').forEach(b => b.onclick = () => extendDialog({ attemptId: L[b.dataset.sx].id }, L[b.dataset.sx].name));
+}
+
+function pauseDialog(scope, label) {
+  modal(`<h2>Pause ${esc(label)}</h2>
+    <p class="muted" style="margin:4px 0 10px">Students see a full-screen notice: <b>“Please ask your examiner to take you to the supervision room.”</b> Their timer freezes and the paused time is added back when they resume. No new students can start a paused exam.</p>
+    <label class="f">Resume automatically after (minutes)</label><input class="in" id="pm" type="number" min="1" max="240" placeholder="Leave blank to resume manually">
+    <label class="f">Message shown to students <span class="muted">(optional)</span></label><textarea class="in" id="pmsg" rows="2" placeholder="e.g. Short technical pause. Please stay with your invigilator."></textarea>
+    <p class="small muted">An alarm sounds on each student’s computer 5 minutes before the set resume time, and again when the exam resumes.</p>
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn ghost" id="px">Cancel</button><button class="btn amber" id="py">Pause now</button></div>`);
+  $('#px').onclick = closeModal;
+  $('#py').onclick = () => { const mins = Number($('#pm').value) || 0, msg = $('#pmsg').value.trim(); closeModal(); doAction(Object.assign({ op: 'pause', minutes: mins, message: msg }, scope)); };
+}
+
+function extendDialog(scope, label) {
+  modal(`<h2>Add time</h2><p class="muted" style="margin:4px 0 10px">Extra minutes for ${esc(label)}. Students see a notice that time was added.</p>
+    <div class="row">${[5, 10, 15, 30].map(m => `<button class="btn ghost" data-m="${m}">+${m} min</button>`).join('')}</div>
+    <label class="f">Or enter minutes</label><input class="in" id="xm" type="number" min="1" max="240">
+    <div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn ghost" id="xx">Cancel</button><button class="btn green" id="xy">Add time</button></div>`);
+  $('#ovbox').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { $('#xm').value = b.dataset.m; });
+  $('#xx').onclick = closeModal;
+  $('#xy').onclick = () => { const m = Number($('#xm').value); if (!(m > 0)) return toast('Enter the minutes to add.'); closeModal(); doAction(Object.assign({ op: 'extend', minutes: m }, scope)); };
+}
+
+async function doAction(body) {
+  try {
+    const r = await api('controlAction', body);
+    toast({ pause: 'Paused', resume: 'Resumed', extend: 'Time added for' }[body.op] + ' ' + r.changed + ' student(s)', 3500);
+    livePoll(VIEW, true);
+  } catch (e) { toast(e.message, 4000); }
+}
+
+function logTable(list) {
+  if (!list.length) return '<div class="empty" style="padding:16px">No control actions yet.</div>';
+  return `<div class="tscroll"><table class="tbl"><thead><tr><th>Time (IST)</th><th>Action</th><th>Scope</th><th>Detail</th><th>By</th></tr></thead><tbody>
+    ${list.map(l => `<tr><td class="small" style="white-space:nowrap">${esc(l.time)}</td><td><span class="pill ${/PAUSE/.test(l.action) ? 'p-In-Progress' : /RESUME|EXTEND/.test(l.action) ? 'p-Verified' : /STRESS/.test(l.action) ? 'p-Sent-to-CoE' : ''}">${esc(String(l.action).replace(/_/g, ' '))}</span></td>
+      <td class="small">${esc(examName(l.scope))}</td><td class="small">${esc(l.detail)}</td><td class="small muted">${esc(l.actor)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function examName(id) { const e = CS && CS.exams.find(x => x.id === id); return e ? e.title : id; }
+
+/* ============================ SCHEDULE CHECK ============================ */
+
+async function planView() {
+  const my = VIEW;
+  try {
+    const r = await api('controlState', {});
+    if (my !== VIEW) return;
+    CS = r.state;
+  } catch (e) { $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  const st = CS, cap = st.capacity;
+  $('#view').innerHTML = `
+    <div class="card"><div class="eyebrow">System capacity</div><h2 style="font-size:20px">How many students can write at the same time</h2>
+      <div class="tiles" style="grid-template-columns:repeat(4,1fr);margin:14px 0 6px">
+        <div class="tile hl"><b>${cap.students.live}</b><span>with Live Proctor (camera + screen)</span></div>
+        <div class="tile"><b>${cap.students.proctored}</b><span>with snapshots, no Live Proctor</span></div>
+        <div class="tile"><b>${cap.students.basic}</b><span>no camera or screen</span></div>
+        <div class="tile"><b>${cap.raw}</b><span>req/s measured${cap.estimated ? ' (estimate)' : ''}</span></div></div>
+      <p class="small muted" style="margin:6px 0 0">${cap.estimated ? '<b style="color:var(--amber)">These are estimates.</b> Run the stress test once, when no exam is live, to measure your system.' : 'Measured by the stress test on ' + esc(cap.testedAt) + '.'} Usable capacity is ${cap.safety}% of the measured figure (safety margin).</p></div>
+    <div class="card"><div class="eyebrow">Next 7 days</div><h2 style="font-size:20px">Will the scheduled exams fit?</h2>
+      <p class="small muted" style="margin:4px 0 0">Projected load when each exam opens, counting every exam open at that moment. Uses the expected number of candidates set in the CoE portal, or the registered candidates if none is set.</p>
+      ${st.upcoming.length ? `<div class="tscroll"><table class="tbl mt"><thead><tr><th>Exam</th><th>Window (IST)</th><th>Candidates</th><th>Overlaps</th><th>Projected load</th><th>Verdict</th></tr></thead><tbody>
+      ${st.upcoming.map(u => `<tr><td><div class="title">${esc(u.title)}</div><div class="small muted">${u.status === 'On' ? 'On' : 'Off'}</div></td><td class="small">${esc(u.startIST)}<br>→ ${esc(u.endIST)}</td>
+        <td>${u.expected || '<span class="small" style="color:var(--amber)">not set</span>'}${u.expected && !u.expectedSet ? '<div class="small muted">registered</div>' : ''}</td>
+        <td class="small">${u.overlapping ? u.overlapping + ' other exam(s)' : '—'}</td>
+        <td><div class="bar"><i style="width:${Math.min(100, u.pct / 1.5)}%;background:${u.verdict === 'Fits' ? 'var(--green)' : u.verdict === 'Tight' ? 'var(--amber)' : 'var(--red)'}"></i></div><span class="small muted">${u.pct}% of usable</span></td>
+        <td><span class="pill ${u.verdict === 'Fits' ? 'p-Verified' : u.verdict === 'Tight' ? 'p-Submitted' : 'p-Returned'}">${u.verdict}</span></td></tr>`).join('')}
+      </tbody></table></div>` : '<div class="empty">No exams in the next 7 days.</div>'}
+      <div class="note blue">To fix an exam that is <b>Over capacity</b>: open it in the CoE portal (oes.acriindia.org.in/admin). The editor’s capacity check suggests batches and can split the exam into them in one click.</div></div>`;
+}
+
+/* ============================ STRESS TEST ============================ */
+
+let STRESS = null, LAST_RESULT = null;
+async function stressView() {
+  const my = VIEW;
+  try { const r = await api('controlState', {}); if (my !== VIEW) return; CS = r.state; } catch (e) { $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  const cap = CS.capacity;
+  $('#view').innerHTML = `
+    <div class="g2" style="gap:16px">
+      <div class="card" style="margin:0"><div class="eyebrow">Current capacity</div>
+        <div class="row" style="align-items:flex-end;gap:12px;margin:8px 0"><span class="big2">${cap.raw}</span><span class="muted" style="padding-bottom:4px">requests / second ${cap.estimated ? '<b style="color:var(--amber)">(estimate — not yet tested)</b>' : ''}</span></div>
+        <div class="kv"><span>Last tested</span><b>${cap.testedAt ? esc(cap.testedAt) : 'Never'}</b><span>Usable (${cap.safety}% margin)</span><b>${cap.usable} req/s</b>
+          <span>Live-proctored students</span><b>${cap.students.live}</b><span>Students with snapshots</span><b>${cap.students.proctored}</b><span>Basic students</span><b>${cap.students.basic}</b></div></div>
+      <div class="card" style="margin:0"><div class="eyebrow">Run a stress test</div>
+        <p class="small muted" style="margin:4px 0 10px">The test acts like a growing crowd of students: it sends the same kind of requests a writing student sends, step by step faster, until responses get slow or start failing. It takes about 2–4 minutes.</p>
+        <div class="g3"><div><label class="f">Go up to</label><select class="in" id="smax"><option value="20">20 req/s</option><option value="30" selected>30 req/s</option><option value="45">45 req/s</option><option value="60">60 req/s</option></select></div>
+          <div><label class="f">Each step lasts</label><select class="in" id="ssec"><option value="10">10 s</option><option value="15" selected>15 s</option><option value="20">20 s</option></select></div>
+          <div><label class="f">Live-grid images</label><label class="chk" style="border:0;padding:8px 0"><input type="checkbox" id="sfr" checked><span><b>Include</b> (1 in 10 requests, as on exam day)</span></label></div></div>
+        <div class="note amber" style="margin-top:6px">Run it when <b>no exam is live</b>, from a computer on a fast, stable connection. While it runs, Master Control does not pause anyone.</div>
+        <div class="row mt"><button class="btn" id="srun">Start stress test</button><button class="btn red" id="sstop" disabled>Stop</button><span class="small muted" id="sprog"></span></div></div>
+    </div>
+    <div class="card"><div class="eyebrow">Results</div><h2 style="font-size:18px">Response time at each step</h2><div id="sres">${LAST_RESULT ? '' : '<div class="empty">No test run in this session yet.</div>'}</div></div>`;
+  $('#srun').onclick = startStress;
+  $('#sstop').onclick = () => { if (STRESS) STRESS.stop = true; $('#sprog').textContent = 'Stopping after this step…'; };
+  if (LAST_RESULT) drawStress(LAST_RESULT, true);
+}
+
+function randomPayload(n) {
+  const a = new Uint8Array(Math.ceil(n * 3 / 4)); crypto.getRandomValues(a);
+  let s = ''; for (let i = 0; i < a.length; i += 4096) s += String.fromCharCode.apply(null, a.subarray(i, i + 4096));
+  return 'data:image/jpeg;base64,' + btoa(s).slice(0, n);
+}
+
+async function startStress() {
+  const opt = { max: Number($('#smax').value), secs: Number($('#ssec').value), frames: $('#sfr').checked };
+  let r = await api('stressStart', { maxRps: opt.max }).catch(e => { toast(e.message); return null; });
+  if (!r) return;
+  if (r.needsForce) {
+    if (!(await confirmBox('Students are writing right now', r.inProgress + ' student(s) are in an exam. The stress test will slow their exams down. Run it anyway?', 'Run anyway', 'red'))) return;
+    r = await api('stressStart', { maxRps: opt.max, force: true }).catch(e => { toast(e.message); return null; });
+    if (!r) return;
+  }
+  STRESS = { token: r.token, stop: false };
+  $('#srun').disabled = true; $('#sstop').disabled = false;
+  const slow = (CS && CS.cfg.slowMs) || 4000;
+  const levels = [2, 4, 6, 8, 10, 12, 15, 18, 22, 26, 30, 35, 40, 45, 50, 60].filter(x => x <= opt.max);
+  const payload = opt.frames ? randomPayload(50000) : '';
+  const small = randomPayload(800);   // a normal check-in carries a small draft of answers
+  const res = { stages: [], slowMs: slow, frames: opt.frames, stopReason: 'Reached the top level' };
+  LAST_RESULT = res;
+  for (let k = 0; k < levels.length; k++) {
+    if (STRESS.stop) { res.stopReason = 'Stopped by you'; break; }
+    const stage = await runStage(levels[k], opt.secs, payload, small, k, levels.length, slow);
+    res.stages.push(stage);
+    drawStress(res, false);
+    if (!stage.pass) { res.stopReason = stage.err > 0.03 ? 'Errors at ' + stage.target + ' req/s' : 'Slow responses at ' + stage.target + ' req/s'; break; }
+  }
+  const best = res.stages.filter(s => s.pass).pop();
+  res.rps = best ? Math.round(best.achieved * 10) / 10 : 0;
+  res.p95 = best ? best.p95 : 0;
+  try { await api('stressEnd', { st: STRESS.token, result: { rps: res.rps, p95: res.p95, stopReason: res.stopReason } }); } catch (e) {}
+  STRESS = null;
+  $('#srun') && ($('#srun').disabled = false); $('#sstop') && ($('#sstop').disabled = true);
+  $('#sprog') && ($('#sprog').textContent = 'Finished: ' + res.stopReason);
+  drawStress(res, true);
+}
+
+async function runStage(rps, secs, payload, small, k, total, slow) {
+  const n = Math.round(rps * secs), gap = 1000 / rps, start = performance.now(), out = [], jobs = [];
+  let inflight = 0;
+  for (let i = 0; i < n; i++) {
+    if (STRESS.stop) break;
+    const wait = start + i * gap - performance.now();
+    if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    const left = Math.max(0, Math.round(secs - (performance.now() - start) / 1000));
+    if (i % rps === 0) $('#sprog') && ($('#sprog').textContent = `Step ${k + 1} of ${total} · ${rps} req/s · ${left}s left · ${inflight} waiting`);
+    if (inflight > 120) { out.push({ ok: false, ms: 20000 }); continue; }
+    inflight++;
+    const t0 = performance.now();
+    const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 20000);
+    jobs.push(fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, signal: ctl.signal,
+      body: JSON.stringify({ action: 'stressPing', st: STRESS.token, payload: (payload && Math.random() < 0.1) ? payload : small, sheet: Math.random() < 0.05 }) })
+      .then(r => r.json()).then(j => out.push({ ok: !!j.ok, ms: performance.now() - t0 }))
+      .catch(() => out.push({ ok: false, ms: performance.now() - t0 }))
+      .finally(() => { inflight--; clearTimeout(to); }));
+  }
+  await Promise.all(jobs);
+  const ok = out.filter(o => o.ok).map(o => o.ms).sort((a, b) => a - b);
+  const q = p => ok.length ? Math.round(ok[Math.min(ok.length - 1, Math.floor(ok.length * p))]) : 0;
+  const err = out.length ? (out.length - ok.length) / out.length : 1;
+  const st = { target: rps, sent: out.length, ok: ok.length, err: Math.round(err * 1000) / 1000, p50: q(0.5), p95: q(0.95), achieved: Math.round(ok.length / secs * 10) / 10 };
+  st.pass = st.err <= 0.03 && st.p95 <= slow && ok.length > 0;
+  return st;
+}
+
+function drawStress(res, done) {
+  const el = $('#sres'); if (!el) return;
+  const S = res.stages, slow = res.slowMs;
+  const maxMs = Math.max(slow * 1.25, ...S.map(s => s.p95 || 0));
+  const cap = CS ? CS.capacity : null;
+  const per = (rps, w, extra) => cap ? Math.max(0, Math.floor((rps * cap.safety / 100 - (extra || 0)) / w)) : 0;
+  el.innerHTML = `
+    ${S.length ? `<div style="position:relative;margin-top:26px">
+      <div class="stagebar">${S.map(s => `<div class="sb" style="height:${Math.max(2, (s.p95 || maxMs) / maxMs * 100)}%;background:${s.pass ? 'var(--green)' : 'var(--red)'}"><span>${s.p95 ? (s.p95 / 1000).toFixed(1) + 's' : 'fail'}</span></div>`).join('')}
+        <div class="thr" style="bottom:${slow / maxMs * 100}%"></div></div>
+      <div class="stagelbl">${S.map(s => `<div>${s.target}</div>`).join('')}</div>
+      <div class="legend2"><span><i style="background:var(--green);height:10px;width:10px"></i>Passed (95% of answers faster than ${slow / 1000}s, under 3% errors)</span><span><i style="background:var(--red);height:10px;width:10px"></i>Failed</span><span><i style="border-top:2px dashed var(--red);height:0"></i>Slow limit</span><span>Bottom labels: requests per second sent</span></div></div>
+    <div class="tscroll"><table class="tbl mt"><thead><tr><th>Step (req/s)</th><th>Sent</th><th>Answered</th><th>Errors</th><th>Achieved req/s</th><th>Median</th><th>95% within</th><th>Result</th></tr></thead><tbody>
+      ${S.map(s => `<tr><td><b>${s.target}</b></td><td>${s.sent}</td><td>${s.ok}</td><td>${(s.err * 100).toFixed(1)}%</td><td>${s.achieved}</td><td>${s.p50} ms</td><td>${s.p95} ms</td><td><span class="pill ${s.pass ? 'p-Verified' : 'p-Returned'}">${s.pass ? 'Pass' : 'Fail'}</span></td></tr>`).join('')}
+    </tbody></table></div>` : '<div class="empty">Starting…</div>'}
+    ${done ? `<div class="note ${res.rps ? 'green' : 'red'}" style="font-size:15px">${res.rps
+      ? `<b>The system sustained ${res.rps} requests per second</b> (${esc(res.stopReason)}). At ${cap ? cap.safety : 80}% safety margin that is about <b>${per(res.rps, cap.weights.live, cap.weights.watch)} live-proctored</b>, ${per(res.rps, cap.weights.proctored)} snapshot-only, or ${per(res.rps, cap.weights.basic)} basic students at the same time.`
+      : 'No step passed. Check your connection and try again with a lower start, or look at the Apps Script executions log.'}</div>
+      ${res.rps ? '<div class="row mt"><button class="btn green" id="ssave">Save as system capacity</button><span class="small muted">Master Control and the CoE capacity check will use this figure.</span></div>' : ''}` : ''}`;
+  if ($('#ssave')) $('#ssave').onclick = async () => {
+    try { const r = await api('stressEnd', { result: { rps: res.rps, p95: res.p95, stopReason: res.stopReason }, save: true }); toast('Saved: capacity ' + res.rps + ' req/s'); CS.capacity = r.capacity; stressView(); }
+    catch (e) { toast(e.message); }
+  };
+}
+
+/* ============================ SETTINGS & LOG ============================ */
+
+async function settingsView() {
+  const my = VIEW;
+  try { const r = await api('controlState', { force: true }); if (my !== VIEW) return; CS = r.state; } catch (e) { $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  const c = CS.cfg;
+  const f = (k, label, help, unit) => `<div><label class="f">${label}</label><div class="row" style="flex-wrap:nowrap"><input class="in" type="number" data-s="${k}" value="${c[k]}"><span class="small muted">${unit}</span></div><div class="small muted" style="margin-top:4px">${help}</div></div>`;
+  $('#view').innerHTML = `
+    <div class="card"><div class="eyebrow">Automatic control</div><h2 style="font-size:20px">How Master Control reacts to load</h2>
+      <ol class="small" style="line-height:1.7;color:var(--muted);margin:8px 0 4px 18px;padding:0">
+        <li>Every writing student adds load. Master Control compares it with the usable capacity every minute, and every few seconds while this page is open.</li>
+        <li>Above <b>Pause at</b>, or when students see slow responses, it pauses students (Low priority first, newest starters first) until load is back to <b>Target</b>. New students are held at the start screen.</li>
+        <li>Paused students see “Please ask your examiner to take you to the supervision room”, their timer frozen and the expected resume time. An alarm sounds 5 minutes before and at resume.</li>
+        <li>When load stays below <b>Resume below</b>, they resume oldest first and get the paused time back plus the extra minutes.</li></ol>
+      <div class="g3" style="gap:6px 18px">
+        ${f('pauseAt', 'Pause at', 'Share of usable capacity that triggers pausing.', '%')}
+        ${f('target', 'Target after pausing', 'Pause until load falls to this level. Also the ceiling when resuming.', '%')}
+        ${f('resumeBelow', 'Resume below', 'Start resuming when load stays under this for about a minute.', '%')}
+        ${f('bufferMin', 'Extra minutes on resume', 'Added on top of the paused time, to settle back in.', 'min')}
+        ${f('slowMs', 'Slow response limit', 'If students’ requests take longer than this on average, treat it as overload.', 'ms')}
+        ${f('safety', 'Safety margin', 'Use this share of the stress-test capacity.', '%')}
+        ${f('hbSec', 'Student check-in every', 'How often a writing student contacts the server. Answers are saved on the student’s computer all the time. Higher = more students.', 's')}
+        ${f('liveSec', 'Live grid refresh', 'Image refresh for the students on the Live Proctor page being watched.', 's')}
+        ${f('snapSec', 'Routine snapshot every', 'Stored camera/screen evidence. A snapshot is always taken at every warning.', 's')}
+      </div>
+      <div class="row mt"><button class="btn green" id="ssv">Save settings</button><span class="small muted">Control mode (Auto / Manual) is switched on the Live control tab.</span></div><div class="err" id="sse"></div></div>
+    <div class="card"><div class="between"><div><div class="eyebrow">Control log</div><h2 style="font-size:18px">Last 30 actions</h2></div><button class="btn ghost sm" id="lref">Refresh</button></div>${logTable(CS.log || [])}
+      <p class="small muted" style="margin:10px 0 0">The full history is in the <b>ControlLog</b> tab of the exam Google Sheet.</p></div>`;
+  $('#ssv').onclick = async () => {
+    const values = {};
+    document.querySelectorAll('[data-s]').forEach(i => values[i.dataset.s] = i.value);
+    showErr('#sse');
+    try { await api('controlSettings', { values }); toast('Settings saved'); settingsView(); } catch (e) { showErr('#sse', e.message); }
+  };
+  $('#lref').onclick = () => settingsView();
+}
+
+/* ============================ START ============================ */
+SESSION = loadSession();
+if (BOOT && BOOT.session) saveSession(BOOT.session);
+if (API_URL.indexOf('PASTE_') === 0) setTimeout(() => toast('Setup needed: paste the Apps Script /exec URL into API_URL.', 6000), 300);
+if (SESSION && SESSION.token) {
+  api('me').then(r => {
+    if (r.user.role !== 'CoE') { saveSession(null); return authView('Master Control needs a Controller of Examinations account.', 'in'); }
+    SESSION.user = r.user; saveSession(SESSION); shell('live');
+  }).catch(e => { if (SESSION) authView(e.message, 'in'); });
+  $('#app').innerHTML = '<div class="spin"></div>';
+} else authView('', 'in');
+</script>
+</body>
+</html>

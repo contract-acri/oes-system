@@ -1,0 +1,346 @@
+/* =========================================================================
+ *  SEALED PAPERS — blueprint, paper setters, question pool, random draw
+ *  (setters and moderators work on www.papers.exam.acriindia.org)
+ *
+ *  The CoE defines a blueprint (sections, marks, difficulty mix). Setters write
+ *  questions into a pool. When a session (batch) opens, the server draws that
+ *  session's paper at random from the unused pool. Nobody chooses the paper and,
+ *  through the portals, nobody sees it before it is drawn.
+ * ========================================================================= */
+
+const DIFFS = ['Easy', 'Medium', 'Hard'];
+
+function isPool_(ex) { return String((ex && ex.Mode) || '') === 'Pool'; }
+function groupId_(ex) { return String(ex.GroupID || ex.ExamID); }
+function groupExams_(gid, exams) { return (exams || rows_('Exams')).filter(e => groupId_(e) === gid); }
+function groupParent_(gid, exams) { return (exams || rows_('Exams')).find(e => e.ExamID === gid) || null; }
+
+function parseBlueprint_(v) {
+  let b = null;
+  try { b = typeof v === 'string' ? JSON.parse(v || 'null') : v; } catch (e) { b = null; }
+  return b && Array.isArray(b.sections) ? b : { sections: [] };
+}
+
+/** Validate and normalise a blueprint sent by the CoE editor. */
+function cleanBlueprint_(b) {
+  b = parseBlueprint_(b);
+  if (!b.sections.length) fail_('Add at least one section to the blueprint.');
+  if (b.sections.length > 10) fail_('A blueprint can have at most 10 sections.');
+  const out = { sections: [] };
+  b.sections.forEach((s, i) => {
+    const key = String.fromCharCode(65 + i);
+    const name = String(s.name || ('Section ' + key)).trim().slice(0, 60);
+    const type = s.type === 'Written' ? 'Written' : 'MCQ';
+    const count = Math.round(Number(s.count) || 0), marks = Number(s.marks) || 0;
+    if (count < 1 || count > 100) fail_(name + ': number of questions must be between 1 and 100.');
+    if (!(marks > 0 && marks <= 100)) fail_(name + ': marks per question must be more than 0.');
+    const mix = {};
+    let sum = 0;
+    DIFFS.forEach(d => { mix[d] = Math.max(0, Math.round(Number((s.mix || {})[d]) || 0)); sum += mix[d]; });
+    if (sum !== count) fail_(name + ': the easy + medium + hard counts (' + sum + ') must add up to the number of questions (' + count + ').');
+    out.sections.push({ key: key, name: name, type: type, count: count, marks: marks, mix: mix });
+  });
+  return out;
+}
+function blueprintTotal_(bp) { return bp.sections.reduce((t, s) => t + s.count * s.marks, 0); }
+
+/** Sets the pool must hold: one per batch plus a reserve, never fewer than 3. */
+function setsNeeded_(gid, exams) { return Math.max(3, groupExams_(gid, exams).length + 1); }
+
+function poolRows_(gid) { return rows_('Pool').filter(q => String(q.GroupID) === gid); }
+function usableStatus_(parent) { return String(parent.Moderators || '').trim() ? ['Approved'] : ['Submitted', 'Approved']; }
+
+/** Have/need per section × difficulty for the sets not yet drawn. */
+function coverage_(gid, exams, pool) {
+  exams = exams || rows_('Exams');
+  const parent = groupParent_(gid, exams);
+  if (!parent) return null;
+  const bp = parseBlueprint_(parent.Blueprint);
+  const members = groupExams_(gid, exams);
+  const drawn = members.filter(e => toDate_(e.DrawnAt)).length;
+  const sets = setsNeeded_(gid, exams), remaining = Math.max(0, sets - drawn);
+  const ok = usableStatus_(parent);
+  pool = pool || poolRows_(gid);
+  const free = pool.filter(q => !q.UsedBy && ok.indexOf(String(q.Status)) >= 0);
+  const cells = [];
+  let ready = bp.sections.length > 0, short = [];
+  bp.sections.forEach(s => DIFFS.forEach(d => {
+    if (!s.mix[d]) return;
+    const need = s.mix[d] * remaining;
+    const have = free.filter(q => q.Section === s.key && q.Difficulty === d).length;
+    const waiting = pool.filter(q => !q.UsedBy && q.Section === s.key && q.Difficulty === d && ['Draft', 'Submitted'].indexOf(String(q.Status)) >= 0 && ok.indexOf(String(q.Status)) < 0).length;
+    cells.push({ section: s.key, name: s.name, difficulty: d, need: need, have: have, waiting: waiting });
+    if (have < need) { ready = false; short.push(s.name + ' ' + d.toLowerCase() + ': ' + have + ' of ' + need); }
+  }));
+  return { sets: sets, drawn: drawn, remaining: remaining, ready: ready, short: short, cells: cells, moderated: ok.length === 1 };
+}
+
+function requirePoolReady_(ex, exams) {
+  if (!isPool_(ex)) return;
+  const cov = coverage_(groupId_(ex), exams);
+  if (!cov || !cov.ready) fail_('The question pool is not complete yet, so this exam cannot be switched On. Still needed — ' + (cov ? cov.short.join('; ') : 'a blueprint') + '.');
+}
+
+/** Draw this session's paper at random from the unused pool. Call inside the lock. */
+function drawPaper_(ex) {
+  const exams = rows_('Exams');
+  const gid = groupId_(ex), parent = groupParent_(gid, exams);
+  if (!parent) fail_('This exam’s paper is not set up. Please contact the invigilator.');
+  const bp = parseBlueprint_(parent.Blueprint);
+  const ok = usableStatus_(parent);
+  const all = rows_('Pool');
+  const free = all.filter(q => String(q.GroupID) === gid && !q.UsedBy && ok.indexOf(String(q.Status)) >= 0);
+  const picked = [];
+  bp.sections.forEach(s => DIFFS.forEach(d => {
+    const n = s.mix[d] || 0;
+    if (!n) return;
+    const cand = free.filter(q => q.Section === s.key && q.Difficulty === d);
+    if (cand.length < n) fail_('The paper for this exam is not ready. Please tell your invigilator (code PAPER-' + s.key + '-' + d.charAt(0) + ').');
+    for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = cand[i]; cand[i] = cand[j]; cand[j] = t; }
+    cand.slice(0, n).forEach(q => picked.push({ q: q, s: s }));
+  }));
+  // Questions appear section by section; within a section the order is random.
+  picked.sort((a, b) => a.s.key < b.s.key ? -1 : a.s.key > b.s.key ? 1 : Math.random() - 0.5);
+  const now = new Date();
+  append_('Questions', picked.map((p, i) => ({
+    QuestionID: id_('Q'), ExamID: ex.ExamID, Order: i + 1, Type: p.s.type, Question: p.q.Question,
+    Options: p.s.type === 'MCQ' ? p.q.Options : '', Correct: p.s.type === 'MCQ' ? p.q.Correct : '', Marks: p.s.marks,
+    Section: p.s.name, Difficulty: p.q.Difficulty, PoolQID: p.q.PoolQID, ModelAnswer: p.q.ModelAnswer
+  })));
+  picked.forEach(p => { p.q.UsedBy = ex.ExamID; p.q.UsedAt = now; });
+  writeCols_('Pool', all, ['UsedBy', 'UsedAt']);
+  update_('Exams', ex._row || findRow_('Exams', 'ExamID', ex.ExamID), { DrawnAt: now, TotalMarks: blueprintTotal_(bp) });
+  delBig_('qs_' + ex.ExamID);
+  const fp = hex_(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, picked.map(p => p.q.PoolQID).sort().join(','))).slice(0, 12);
+  audit_('System', 'PAPER_DRAWN', ex.ExamID, picked.length + ' questions drawn at random; fingerprint ' + fp);
+  return picked.length;
+}
+
+/** Reviewers may open answers of a pool exam only after its session has closed. */
+function markGate_(u, ex) {
+  if (u.role === 'CoE' || !isPool_(ex)) return;
+  if (Date.now() < ms_(ex.EndIST)) fail_('Marking for this session opens when it closes at ' + ist_(toDate_(ex.EndIST)) + ' IST, so the paper stays sealed until then.');
+}
+
+/* ---- CoE: setters, moderators, progress (never question content) ---- */
+
+function r_poolStatus(req) {
+  staff_(req, ['CoE']);
+  const ex = exam_(req.examId);
+  if (!ex) fail_('Exam not found.');
+  const exams = rows_('Exams'), gid = groupId_(ex), pool = poolRows_(gid);
+  const asg = rows_('Assignments').filter(a => String(a.GroupID) === gid);
+  const parent = groupParent_(gid, exams);
+  const bp = parseBlueprint_(parent && parent.Blueprint);
+  const staff = {};
+  rows_('Staff').forEach(s => staff[lower_(s.Email)] = s.Name);
+  return {
+    groupId: gid, isParent: ex.ExamID === gid, parentTitle: parent ? parent.Title : '',
+    coverage: coverage_(gid, exams, pool),
+    batches: groupExams_(gid, exams).map(e => ({ id: e.ExamID, title: e.Title, window: ist_(toDate_(e.StartIST), 'dd MMM, hh:mm a') + ' – ' + ist_(toDate_(e.EndIST), 'hh:mm a'),
+      drawn: !!toDate_(e.DrawnAt), drawnAt: ist_(toDate_(e.DrawnAt), 'dd MMM, hh:mm a'), status: e.Status })).sort((a, b) => a.title < b.title ? -1 : 1),
+    assignments: asg.map(a => {
+      const mine = pool.filter(q => lower_(q.SetterEmail) === lower_(a.SetterEmail) && q.Section === a.Section);
+      const sec = bp.sections.find(s => s.key === a.Section);
+      return { id: a.AssignID, setter: lower_(a.SetterEmail), setterName: staff[lower_(a.SetterEmail)] || '', section: a.Section, sectionName: sec ? sec.name : a.Section,
+        count: Number(a.Count) || 0, due: ist_(toDate_(a.Due), 'dd MMM yyyy'), dueInput: toDate_(a.Due) ? Utilities.formatDate(toDate_(a.Due), CFG.TZ, 'yyyy-MM-dd') : '',
+        drafts: mine.filter(q => q.Status === 'Draft').length, submitted: mine.filter(q => q.Status === 'Submitted').length,
+        approved: mine.filter(q => q.Status === 'Approved').length, rejected: mine.filter(q => q.Status === 'Rejected').length };
+    }),
+    setters: rows_('Staff').filter(s => lower_(s.Status) === 'active' && normRole_(s.Role) === 'Setter').map(s => ({ email: lower_(s.Email), name: s.Name })),
+    moderatorsAvailable: rows_('Staff').filter(s => lower_(s.Status) === 'active' && normRole_(s.Role) === 'Moderator').map(s => ({ email: lower_(s.Email), name: s.Name }))
+  };
+}
+
+function r_assignSetter(req) {
+  const u = staff_(req, ['CoE']);
+  const ex = exam_(req.examId);
+  if (!ex || !isPool_(ex)) fail_('Save the exam with “Question pool” as the paper source first.');
+  const gid = groupId_(ex), parent = groupParent_(gid);
+  const bp = parseBlueprint_(parent.Blueprint);
+  const sec = bp.sections.find(s => s.key === req.section);
+  if (!sec) fail_('Choose a section.');
+  const email = lower_(req.setter), st = staffRow_(email);
+  if (!st || lower_(st.Status) !== 'active' || normRole_(st.Role) !== 'Setter') fail_('Choose an active paper-setter account.');
+  const count = Math.round(Number(req.count) || 0);
+  if (count < 1 || count > 500) fail_('Number of questions must be between 1 and 500.');
+  const due = toDate_(req.due ? req.due + 'T23:59' : '');
+  const a = { AssignID: id_('AS'), GroupID: gid, SetterEmail: email, Section: sec.key, Count: count, Due: due || '', Note: String(req.note || '').slice(0, 500), CreatedBy: u.email, CreatedAt: new Date() };
+  append_('Assignments', a);
+  audit_(u.email, 'SETTER_ASSIGNED', gid, email + ' · ' + sec.name + ' · ' + count);
+  try {
+    const target = DIFFS.map(d => Math.round(count * sec.mix[d] / sec.count) + ' ' + d.toLowerCase()).join(', ');
+    sendMail_(email, 'Paper setting request: ' + (parent.CourseCode ? parent.CourseCode + ' · ' : '') + baseTitle_(parent.Title), mailHtml_('You have been asked to set questions', `
+      <p>Dear ${esc_(st.Name)},</p>
+      <p>The Office of the Controller of Examinations requests you to set questions for <b>${esc_(baseTitle_(parent.Title))}</b>${parent.CourseCode ? ' (' + esc_(parent.CourseCode) + ')' : ''}.</p>
+      <table style="border-collapse:collapse;margin:10px 0">
+        <tr><td style="padding:4px 14px 4px 0;color:#5d6b7a">Section</td><td><b>${esc_(sec.name)}</b> · ${sec.type === 'MCQ' ? 'multiple choice' : 'written answer'} · ${sec.marks} marks each</td></tr>
+        <tr><td style="padding:4px 14px 4px 0;color:#5d6b7a">Questions</td><td><b>${count}</b> (aim for about ${esc_(target)})</td></tr>
+        ${due ? `<tr><td style="padding:4px 14px 4px 0;color:#5d6b7a">Due by</td><td><b>${ist_(due, 'dd MMM yyyy')}</b></td></tr>` : ''}
+      </table>
+      ${a.Note ? `<p>${esc_(a.Note)}</p>` : ''}
+      <p>Sign in at <a href="${esc_(setting_('PAPERS_SITE_URL'))}">${esc_(setting_('PAPERS_SITE_URL'))}</a>. Your questions are confidential: please do not keep copies outside the system.</p>`));
+  } catch (e) { console.error(e); }
+  return { assignId: a.AssignID };
+}
+
+function r_removeAssignment(req) {
+  const u = staff_(req, ['CoE']);
+  const row = findRow_('Assignments', 'AssignID', req.assignId);
+  if (!row) fail_('Assignment not found.');
+  sh_('Assignments').deleteRow(row);
+  audit_(u.email, 'SETTER_REMOVED', req.assignId, 'Questions already written stay in the pool');
+  return {};
+}
+
+/** Emergency only: lets the CoE read the sealed pool. Always logged and reported. */
+function r_poolUnseal(req) {
+  const u = staff_(req, ['CoE']);
+  const reason = String(req.reason || '').trim();
+  if (reason.length < 10) fail_('Write the reason for opening the sealed pool (at least 10 characters). It is recorded and reported.');
+  const ex = exam_(req.examId);
+  if (!ex) fail_('Exam not found.');
+  const gid = groupId_(ex);
+  audit_(u.email, 'POOL_UNSEALED', gid, reason);
+  ctlLog_(u.email, 'POOL_UNSEALED', gid, reason);
+  const admin = setting_('ADMIN_EMAIL');
+  if (admin) { try { sendMail_(admin, 'ALERT: sealed question pool opened — ' + ex.Title, mailHtml_('A sealed question pool was opened', `<p><b>${esc_(u.name)}</b> (${esc_(u.email)}) opened the sealed question pool of <b>${esc_(ex.Title)}</b> on ${ist_(new Date())} IST.</p><p>Reason given: ${esc_(reason)}</p><p>If this was not expected, consider the unused questions compromised and ask setters for new ones.</p>`)); } catch (e) {} }
+  return { questions: poolRows_(gid).map(q => ({ id: q.PoolQID, section: q.Section, difficulty: q.Difficulty, type: q.Type, text: q.Question, options: parseOpts_(q.Options), correct: Number(q.Correct) - 1, status: q.Status, used: q.UsedBy ? 'Used' : 'Unused', setter: q.SetterEmail })) };
+}
+
+/* ---- Paper setters ---- */
+
+function baseTitle_(t) { return String(t || '').replace(/\s+—\s+Batch \d+ of \d+$/, ''); }
+
+function r_setterTasks(req) {
+  const u = staff_(req, ['Setter']);
+  const exams = rows_('Exams');
+  const pool = rows_('Pool').filter(q => lower_(q.SetterEmail) === u.email);
+  return {
+    user: u,
+    tasks: rows_('Assignments').filter(a => lower_(a.SetterEmail) === u.email).map(a => {
+      const parent = groupParent_(String(a.GroupID), exams);
+      if (!parent) return null;
+      const bp = parseBlueprint_(parent.Blueprint), sec = bp.sections.find(s => s.key === a.Section);
+      if (!sec) return null;
+      const mine = pool.filter(q => String(q.GroupID) === String(a.GroupID) && q.Section === a.Section);
+      const count = Number(a.Count) || 0;
+      return {
+        id: a.AssignID, exam: baseTitle_(parent.Title), courseCode: String(parent.CourseCode || ''), programme: String(parent.Programme || ''),
+        section: { key: sec.key, name: sec.name, type: sec.type, marks: sec.marks }, count: count, note: a.Note,
+        due: ist_(toDate_(a.Due), 'dd MMM yyyy'), overdue: toDate_(a.Due) ? Date.now() > ms_(a.Due) : false,
+        target: DIFFS.reduce((o, d) => { o[d] = Math.round(count * sec.mix[d] / sec.count); return o; }, {}),
+        questions: mine.map(q => ({ id: q.PoolQID, text: String(q.Question), options: parseOpts_(q.Options), correct: q.Correct === '' ? null : Number(q.Correct) - 1,
+          difficulty: q.Difficulty, topic: q.Topic, modelAnswer: q.ModelAnswer, status: q.UsedBy ? 'Used' : q.Status, note: q.ModNote, locked: !!q.UsedBy }))
+      };
+    }).filter(Boolean)
+  };
+}
+
+function r_setterSave(req) {
+  const u = staff_(req, ['Setter']);
+  const q = req.question || {};
+  return withLock_(() => {
+    const a = rows_('Assignments').find(x => x.AssignID === req.assignId && lower_(x.SetterEmail) === u.email);
+    if (!a) fail_('Assignment not found.');
+    const parent = groupParent_(String(a.GroupID));
+    const sec = parseBlueprint_(parent && parent.Blueprint).sections.find(s => s.key === a.Section);
+    if (!sec) fail_('This section no longer exists in the blueprint.');
+    const text = String(q.text || '').trim();
+    if (text.length < 5) fail_('Write the question.');
+    if (DIFFS.indexOf(q.difficulty) < 0) fail_('Choose the difficulty: Easy, Medium or Hard.');
+    let options = '', correct = '';
+    if (sec.type === 'MCQ') {
+      const opts = (q.options || []).map(o => String(o).trim());
+      if (opts.length < 2 || opts.some(o => !o)) fail_('Fill in at least two options (no empty options).');
+      if (uniq_(opts.map(lower_)).length !== opts.length) fail_('Two options are the same.');
+      const ci = Number(q.correct);
+      if (!(ci >= 0 && ci < opts.length)) fail_('Mark the correct option.');
+      options = JSON.stringify(opts); correct = ci + 1;
+    }
+    const status = req.submit ? 'Submitted' : 'Draft';
+    const obj = { Question: text.slice(0, 20000), Options: options, Correct: correct, Difficulty: q.difficulty, Topic: String(q.topic || '').slice(0, 120),
+      ModelAnswer: String(q.modelAnswer || '').slice(0, 20000), Status: status, ModNote: '', UpdatedAt: new Date() };
+    if (q.id) {
+      const row = findRow_('Pool', 'PoolQID', q.id);
+      if (!row) fail_('Question not found.');
+      const cur = rowObj_('Pool', row);
+      if (lower_(cur.SetterEmail) !== u.email) fail_('You can only edit your own questions.');
+      if (cur.UsedBy) fail_('This question has already been used in an exam and is locked.');
+      update_('Pool', row, obj);
+      return { id: q.id, status: status };
+    }
+    const mine = rows_('Pool').filter(x => lower_(x.SetterEmail) === u.email && String(x.GroupID) === String(a.GroupID) && x.Section === a.Section).length;
+    if (mine >= (Number(a.Count) || 0) + 5) fail_('You have already written more questions than assigned. Edit or delete existing ones instead.');
+    const dup = rows_('Pool').find(x => String(x.GroupID) === String(a.GroupID) && lower_(String(x.Question).replace(/\s+/g, ' ')) === lower_(text.replace(/\s+/g, ' ')));
+    if (dup) fail_('The same question is already in this pool.');
+    const id = id_('PQ');
+    append_('Pool', Object.assign(obj, { PoolQID: id, GroupID: a.GroupID, Section: sec.key, Type: sec.type, SetterEmail: u.email, AssignID: a.AssignID, CreatedAt: new Date() }));
+    return { id: id, status: status };
+  });
+}
+
+function r_setterDelete(req) {
+  const u = staff_(req, ['Setter']);
+  return withLock_(() => {
+    const row = findRow_('Pool', 'PoolQID', req.id);
+    if (!row) fail_('Question not found.');
+    const q = rowObj_('Pool', row);
+    if (lower_(q.SetterEmail) !== u.email) fail_('You can only delete your own questions.');
+    if (q.UsedBy) fail_('This question has been used in an exam and cannot be deleted.');
+    sh_('Pool').deleteRow(row);
+    return {};
+  });
+}
+
+function r_setterSubmit(req) {
+  const u = staff_(req, ['Setter']);
+  return withLock_(() => {
+    const all = rows_('Pool');
+    let n = 0;
+    all.forEach(q => { if (lower_(q.SetterEmail) === u.email && q.AssignID === req.assignId && q.Status === 'Draft') { q.Status = 'Submitted'; n++; } });
+    if (n) writeCols_('Pool', all, ['Status']);
+    return { submitted: n };
+  });
+}
+
+/* ---- Moderators ---- */
+
+function r_modQueue(req) {
+  const u = staff_(req, ['Moderator']);
+  const exams = rows_('Exams');
+  const groups = exams.filter(e => groupId_(e) === e.ExamID && isPool_(e) && reviewersOf_({ Reviewers: e.Moderators }).indexOf(u.email) >= 0);
+  const pool = rows_('Pool');
+  return {
+    user: u,
+    groups: groups.map(g => {
+      const bp = parseBlueprint_(g.Blueprint);
+      const qs = pool.filter(q => String(q.GroupID) === g.ExamID && !q.UsedBy && q.Status !== 'Draft');
+      const setters = uniq_(qs.map(q => lower_(q.SetterEmail)));
+      return {
+        id: g.ExamID, exam: baseTitle_(g.Title), courseCode: String(g.CourseCode || ''),
+        sections: bp.sections.map(s => ({ key: s.key, name: s.name, type: s.type, marks: s.marks })),
+        questions: qs.map(q => ({ id: q.PoolQID, section: q.Section, type: q.Type, text: String(q.Question), options: parseOpts_(q.Options),
+          correct: q.Correct === '' ? null : Number(q.Correct) - 1, difficulty: q.Difficulty, topic: q.Topic, modelAnswer: q.ModelAnswer,
+          status: q.Status, note: q.ModNote, setter: 'Setter ' + (setters.indexOf(lower_(q.SetterEmail)) + 1) }))
+      };
+    })
+  };
+}
+
+function r_modDecide(req) {
+  const u = staff_(req, ['Moderator']);
+  const row = findRow_('Pool', 'PoolQID', req.id);
+  if (!row) fail_('Question not found.');
+  const q = rowObj_('Pool', row);
+  const g = exam_(String(q.GroupID));
+  if (!g || reviewersOf_({ Reviewers: g.Moderators }).indexOf(u.email) < 0) fail_('This question is not in an exam you moderate.');
+  if (q.UsedBy) fail_('This question has already been used.');
+  if (q.Status === 'Draft') fail_('The setter has not submitted this question yet.');
+  const decision = req.decision === 'Approve' ? 'Approved' : 'Rejected';
+  const note = String(req.note || '').trim().slice(0, 1000);
+  if (decision === 'Rejected' && note.length < 3) fail_('Tell the setter what to fix.');
+  if (req.difficulty && DIFFS.indexOf(req.difficulty) >= 0 && req.difficulty !== q.Difficulty) update_('Pool', row, { Difficulty: req.difficulty });
+  update_('Pool', row, { Status: decision, ModNote: note, ModeratedBy: u.email, ModeratedAt: new Date() });
+  return { status: decision };
+}

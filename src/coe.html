@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ACRI · Controller of Examinations</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<script src="/config.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --green:#63B72D; --green-d:#4C9420; --green-bg:#EEF7E8;
+  --blue:#166FB1; --blue-l:#3F9FCF; --blue-d:#0E568C; --navy:#0B2E4F; --blue-bg:#EAF3FA;
+  --ink:#1B2733; --muted:#5D6B7A; --line:#DDE6E1; --bg:#F4F8F5; --card:#fff;
+  --red:#C8372D; --red-bg:#FCECEA; --amber:#B86E00; --amber-bg:#FFF4E0; --violet:#5B4BB7; --violet-bg:#EFEDFB;
+  --r:14px; --shadow:0 1px 2px rgba(11,46,79,.06),0 6px 24px rgba(11,46,79,.07);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.55 Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+h1,h2,h3{font-family:Montserrat,Inter,sans-serif;color:var(--navy);margin:0;letter-spacing:-.01em}
+button{font:inherit;cursor:pointer} input,textarea,select{font:inherit;color:var(--ink)}
+a{color:var(--blue)}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 22px;background:#fff;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px}
+.brand img{width:44px;height:44px}
+.org{font-family:Montserrat,sans-serif;font-weight:700;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue)}
+.app{font-family:Montserrat,sans-serif;font-weight:800;font-size:17px;color:var(--navy);line-height:1.15}
+.stripe{height:4px;background:linear-gradient(90deg,var(--blue),var(--blue-l) 45%,var(--green))}
+.who{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.nav{display:flex;gap:4px;padding:0 22px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
+.nav button{border:0;background:none;padding:12px 14px;font-weight:600;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap}
+.nav button.on{color:var(--navy);border-bottom-color:var(--green)}
+.nav .n{display:inline-block;min-width:20px;padding:0 6px;border-radius:999px;background:var(--red);color:#fff;font-size:11px;margin-left:5px}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 20px 60px}
+.narrow{max-width:460px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:20px}
+.card+.card,.mt{margin-top:16px}
+.eyebrow{font-family:Montserrat,sans-serif;font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--green-d);margin-bottom:5px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.between{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.spacer{flex:1}
+label.f{display:block;font-weight:600;font-size:12.5px;color:var(--navy);margin:12px 0 5px}
+.in{width:100%;padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;background:#fff;outline:none}
+.in:focus{border-color:var(--blue-l);box-shadow:0 0 0 3px rgba(63,159,207,.16)}
+textarea.in{resize:vertical;min-height:70px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px} .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:0 16px}
+@media (max-width:760px){.g2,.g3{grid-template-columns:1fr}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:9px;padding:9px 15px;font-weight:600;background:var(--blue);color:#fff;white-space:nowrap}
+.btn:hover{background:var(--blue-d)} .btn:disabled{background:#AEBBC6;cursor:not-allowed}
+.btn.green{background:var(--green-d)} .btn.green:hover{background:#3F7E19}
+.btn.red{background:var(--red)} .btn.amber{background:var(--amber)}
+.btn.ghost{background:#fff;color:var(--blue);border:1.5px solid var(--line)} .btn.ghost:hover{background:var(--blue-bg);border-color:var(--blue-l)}
+.btn.sm{padding:6px 11px;font-size:13px} .btn.block{width:100%;margin-top:16px;padding:12px}
+.link{border:0;background:none;color:var(--blue);font-weight:600;padding:0}
+.err{display:none;margin-top:12px;padding:9px 12px;border-radius:9px;background:var(--red-bg);color:var(--red);font-size:13.5px}
+.okm{display:none;margin-top:12px;padding:9px 12px;border-radius:9px;background:var(--green-bg);color:var(--green-d);font-size:13.5px}
+.muted{color:var(--muted)} .small{font-size:12.5px}
+.tabs{display:flex;background:var(--bg);border-radius:10px;padding:4px;margin-bottom:6px}
+.tabs button{flex:1;border:0;background:none;padding:8px;border-radius:8px;font-weight:600;color:var(--muted)}
+.tabs button.on{background:#fff;color:var(--navy);box-shadow:var(--shadow)}
+.tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+@media (max-width:900px){.tiles{grid-template-columns:repeat(2,1fr)}}
+.tile{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.tile b{display:block;font-family:Montserrat,sans-serif;font-size:26px;color:var(--navy)}
+.tile span{font-size:12px;color:var(--muted);font-weight:600}
+.tile.hl{border-color:var(--green);background:var(--green-bg)}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{text-align:left;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:9px 10px;border-bottom:1.5px solid var(--line);white-space:nowrap}
+.tbl td{padding:11px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl tr.click{cursor:pointer} .tbl tr.click:hover td{background:#F8FBF9}
+.tscroll{overflow-x:auto}
+.pill{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap;background:#EEF1F4;color:var(--muted)}
+.p-live,.p-Verified{background:var(--green-bg);color:var(--green-d)}
+.p-upcoming,.p-Submitted,.p-Under-Review{background:var(--amber-bg);color:var(--amber)}
+.p-In-Progress{background:var(--blue-bg);color:var(--blue-d)}
+.p-Sent-to-CoE{background:var(--violet-bg);color:var(--violet)}
+.p-Returned{background:var(--red-bg);color:var(--red)}
+.p-Result-Sent{background:var(--green-d);color:#fff}
+.title{font-weight:700;color:var(--navy)}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;letter-spacing:.06em;background:var(--blue-bg);color:var(--blue-d);padding:2px 7px;border-radius:6px;font-size:12.5px}
+.sw{position:relative;width:42px;height:24px;flex:none;display:inline-block}
+.sw input{opacity:0;width:0;height:0}
+.sw span{position:absolute;inset:0;background:#C9D3DB;border-radius:999px;transition:.2s;cursor:pointer}
+.sw span::before{content:"";position:absolute;width:18px;height:18px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.sw input:checked+span{background:var(--green)} .sw input:checked+span::before{transform:translateX(18px)}
+.icons{display:flex;gap:4px;flex-wrap:wrap}
+.icons i{font-style:normal;font-size:11px;font-weight:700;padding:2px 6px;border-radius:5px;background:var(--bg);color:var(--muted)}
+.icons i.on{background:var(--blue-bg);color:var(--blue-d)}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:11px 0;border-top:1px solid var(--line)}
+.chk input{width:18px;height:18px;margin-top:2px;accent-color:var(--green-d)}
+.chk b{display:block;color:var(--navy)}
+.qc{border:1.5px solid var(--line);border-radius:12px;padding:14px;margin-top:12px;background:#fff}
+.qc .hd{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.qc .num{font-family:Montserrat,sans-serif;font-weight:800;color:var(--blue);min-width:34px}
+.opt{display:flex;gap:8px;align-items:center;margin-top:7px}
+.opt input[type=radio]{width:18px;height:18px;accent-color:var(--green-d);flex:none}
+.opt .L{font-weight:700;color:var(--blue);width:16px}
+.rchips{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+.rchip{display:inline-flex;align-items:center;gap:6px;background:var(--blue-bg);color:var(--blue-d);font-size:12.5px;font-weight:600;padding:4px 6px 4px 10px;border-radius:999px}
+.rchip button{border:0;background:rgba(14,86,140,.12);color:var(--blue-d);border-radius:50%;width:18px;height:18px;line-height:16px;padding:0}
+.note{padding:10px 13px;border-radius:10px;font-size:13.5px;margin-top:12px}
+.note.amber{background:var(--amber-bg);color:#7A4A00} .note.blue{background:var(--blue-bg);color:var(--blue-d)} .note.red{background:var(--red-bg);color:var(--red)} .note.green{background:var(--green-bg);color:var(--green-d)}
+.ans{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:12px;background:#fff}
+.ans .q{white-space:pre-wrap;font-weight:600;color:var(--navy);margin:6px 0 10px}
+.ans .resp{white-space:pre-wrap;background:var(--bg);border-radius:9px;padding:11px 13px;min-height:44px}
+.ans .o{padding:6px 10px;border-radius:8px;margin:3px 0;border:1px solid transparent}
+.ans .o.pick{border-color:var(--blue-l);background:var(--blue-bg)}
+.ans .o.right{color:var(--green-d);font-weight:700}
+.ans .o.pick.wrong{border-color:#E7A39D;background:var(--red-bg)}
+.mk{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.mk input.m{width:90px} .mk input.c{flex:1;min-width:180px}
+.sticky{position:sticky;bottom:0;background:rgba(244,248,245,.96);backdrop-filter:blur(6px);border-top:1px solid var(--line);padding:12px 0;margin-top:18px;z-index:5}
+.ev{display:flex;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.ev b{min-width:150px;color:var(--navy)} .ev.v b{color:var(--red)}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px}
+.gal figure{margin:0;background:var(--bg);border-radius:9px;overflow:hidden;font-size:11.5px;color:var(--muted)}
+.gal img{width:100%;display:block;aspect-ratio:16/10;object-fit:cover;background:#0B2E4F;cursor:zoom-in}
+.gal figcaption{padding:5px 8px}
+.lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:14px}
+.lc{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:zoom-in}
+.lc .scr{position:relative;aspect-ratio:16/9;background:#0B2E4F;display:grid;place-items:center;color:#9FB3C5;font-size:12px}
+.lc .scr img.s{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.lc .scr img.c{position:absolute;right:8px;bottom:8px;width:30%;border-radius:7px;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.lc .inf{display:flex;justify-content:space-between;gap:8px;padding:9px 12px;align-items:center}
+.lc .nm{font-weight:700;color:var(--navy);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sig{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px;background:#C9D3DB}
+.sig.g{background:var(--green)} .sig.a{background:#E59A00} .sig.r{background:var(--red)}
+.ov{position:fixed;inset:0;background:rgba(11,46,79,.6);display:none;align-items:center;justify-content:center;z-index:50;padding:18px}
+.ov.on{display:flex}
+.box{background:#fff;border-radius:16px;max-width:520px;width:100%;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:92vh;overflow:auto}
+.box.wide{max-width:1200px}
+.box h2{font-size:19px;margin-bottom:8px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.on{opacity:1}
+.spin{width:28px;height:28px;border:3px solid rgba(22,111,177,.2);border-top-color:var(--blue);border-radius:50%;animation:sp .8s linear infinite;margin:30px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{text-align:center;color:var(--muted);padding:34px 10px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.filters button{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:600;color:var(--muted)}
+.filters button.on{border-color:var(--green);background:var(--green-bg);color:var(--green-d)}
+.foot{text-align:center;color:var(--muted);font-size:12px;margin-top:26px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="ov" id="ov"><div class="box" id="ovbox"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+/* ==========================================================================
+   ACRI Online Examination — Controller of Examinations portal
+   (oes.acriindia.org.in/admin). The /exec URL comes from /config.js.
+   ========================================================================== */
+const API_URL = window.ACRI_API_URL || 'PASTE_YOUR_WEB_APP_EXEC_URL_HERE';
+const EMBLEM = '__EMBLEM__';
+const PORTAL = 'coe';
+const PORTAL_NAME = 'Controller of Examinations';
+const PRISTINE = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+const BOOT = window.__ACRI_BOOT || null;
+const SKEY = 'acri_coe_session';
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pillCls = s => 'pill p-' + String(s).replace(/\s+/g, '-');
+let SESSION = null, VIEW = 0, EXAMS = [], clockOffset = 0;
+
+function loadSession() { if (BOOT && BOOT.session) return BOOT.session; try { return JSON.parse(localStorage.getItem(SKEY) || 'null'); } catch (e) { return null; } }
+function saveSession(s) { SESSION = s; try { s ? localStorage.setItem(SKEY, JSON.stringify(s)) : localStorage.removeItem(SKEY); } catch (e) {} }
+
+async function api(action, data) {
+  const body = Object.assign({ action, token: SESSION && SESSION.token }, data || {});
+  const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body) });
+  const j = await res.json();
+  if (j.serverTime) clockOffset = j.serverTime - Date.now();
+  if (!j.ok) {
+    if (j.error === 'SESSION_EXPIRED') { saveSession(null); authView('Your session expired. Please sign in again.'); throw new Error('Session expired.'); }
+    throw new Error(j.error || 'Something went wrong.');
+  }
+  return j;
+}
+function toast(m, ms) { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), ms || 2600); }
+function modal(html, wide) { $('#ovbox').className = 'box' + (wide ? ' wide' : ''); $('#ovbox').innerHTML = html; $('#ov').classList.add('on'); }
+function closeModal() { $('#ov').classList.remove('on'); modal.onClose && modal.onClose(); modal.onClose = null; }
+$('#ov').addEventListener('click', e => { if (e.target.id === 'ov') closeModal(); });
+function showErr(id, m) { const e = $(id); if (e) { e.textContent = m || ''; e.style.display = m ? 'block' : 'none'; } }
+function busy(btn, on, label) { if (!btn) return; if (on) { btn.dataset.l = btn.innerHTML; btn.disabled = true; btn.innerHTML = label || 'Working…'; } else { btn.disabled = false; btn.innerHTML = btn.dataset.l || btn.innerHTML; } }
+function confirmBox(title, text, okLabel, cls, withNote, notePh) {
+  return new Promise(resolve => {
+    modal(`<h2>${esc(title)}</h2><p class="muted">${text}</p>${withNote ? `<textarea class="in" id="cbn" rows="4" placeholder="${esc(notePh || '')}"></textarea>` : ''}
+      <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn ghost" id="cbx">Cancel</button><button class="btn ${cls || ''}" id="cby">${esc(okLabel)}</button></div>`);
+    $('#cbx').onclick = () => { closeModal(); resolve(null); };
+    $('#cby').onclick = () => { const v = withNote ? $('#cbn').value : true; closeModal(); resolve(v); };
+  });
+}
+const GRADES = [['O', 'Outstanding', 10, 90], ['A+', 'Excellent', 9, 80], ['A', 'Very Good', 8, 70], ['B+', 'Good', 7, 60], ['B', 'Above Average', 6, 55], ['C', 'Average', 5, 50], ['P', 'Pass', 4, 40], ['F', 'Fail', 0, 0]];
+function gradeOf(bands, total, max) {
+  const b = bands || {};
+  const pct = max ? Math.round(total / max * 10000) / 100 : 0;
+  const g = GRADES.find(x => pct >= (x[0] === 'F' ? 0 : (b[x[0]] != null ? Number(b[x[0]]) : x[3]))) || GRADES[7];
+  return { pct, grade: g[0], meaning: g[1], gp: g[2], result: g[0] === 'F' ? 'Fail' : 'Pass' };
+}
+function openPdf(b64, name) {
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+  const w = window.open(url, '_blank');
+  if (!w) modal(`<h2>${esc(name)}</h2><p class="muted">Your browser blocked the new tab.</p><div class="row" style="justify-content:flex-end"><a class="btn" href="${url}" download="${esc(name)}">Download PDF</a><button class="btn ghost" onclick="closeModal()">Close</button></div>`);
+}
+function brand(sub) { return `<div class="brand"><img src="${EMBLEM}" alt="ACRI"><div><div class="org">Ahmedabad Centre for Research &amp; Innovation</div><div class="app">${sub}</div></div></div>`; }
+
+function openFullWindow() {
+  const tag = '<script>window.__ACRI_BOOT=' + JSON.stringify({ session: SESSION }).replace(/</g, '\\u003c') + ';<\/script>';
+  const html = /<head[^>]*>/i.test(PRISTINE) ? PRISTINE.replace(/<head[^>]*>/i, m => m + tag) : tag + PRISTINE;
+  const w = window.open(URL.createObjectURL(new Blob([html], { type: 'text/html' })), '_blank');
+  if (!w) toast('Allow pop-ups for this site to open the full window.');
+}
+
+/* ============================ AUTH ============================ */
+
+function authView(msg, tab) {
+  VIEW++;
+  $('#app').innerHTML = `<header class="top">${brand(PORTAL_NAME)}</header><div class="stripe"></div>
+  <main class="wrap narrow"><div class="card" style="margin-top:20px">
+    <div class="tabs"><button id="t1" class="${tab === 'req' ? '' : 'on'}">Sign in</button><button id="t2" class="${tab === 'req' ? 'on' : ''}">Request account</button></div>
+    <div id="authBody"></div></div>
+    <div class="foot">Office of the Controller of Examinations · ACRI Online Examination System</div></main>`;
+  $('#t1').onclick = () => authView('', 'in');
+  $('#t2').onclick = () => authView('', 'req');
+  if (tab === 'req') {
+    $('#authBody').innerHTML = `<p class="small muted" style="margin:6px 0 0">Your request is reviewed by ACRI. You can sign in once it is activated.</p>
+      <label class="f">Full name</label><input class="in" id="rn">
+      <label class="f">Email</label><input class="in" id="re" type="email">
+      <div class="g2"><div><label class="f">Designation</label><input class="in" id="rd"></div><div><label class="f">Phone</label><input class="in" id="rp"></div></div>
+      <div class="g2"><div><label class="f">Password</label><input class="in" id="rw" type="password" placeholder="At least 8 characters"></div><div><label class="f">Confirm password</label><input class="in" id="rw2" type="password"></div></div>
+      <button class="btn green block" id="rgo">Request account</button><div class="err" id="ae"></div><div class="okm" id="ao"></div>`;
+    $('#rgo').onclick = async () => {
+      showErr('#ae'); if ($('#rw').value !== $('#rw2').value) return showErr('#ae', 'Passwords do not match.');
+      const b = $('#rgo'); busy(b, true, 'Sending…');
+      try {
+        const r = await api('requestAccount', { portal: PORTAL, name: $('#rn').value, email: $('#re').value, designation: $('#rd').value, phone: $('#rp').value, password: $('#rw').value });
+        const o = $('#ao'); o.textContent = r.message; o.style.display = 'block'; b.style.display = 'none';
+      } catch (e) { showErr('#ae', e.message); busy(b, false); }
+    };
+  } else {
+    $('#authBody').innerHTML = `<label class="f">Email</label><input class="in" id="le" type="email" autocomplete="username">
+      <label class="f">Password</label><input class="in" id="lp" type="password" autocomplete="current-password">
+      <button class="btn block" id="lgo">Sign in</button><div class="err" id="ae"></div>`;
+    const go = async () => {
+      showErr('#ae'); const b = $('#lgo'); busy(b, true, 'Signing in…');
+      try { const r = await api('login', { portal: PORTAL, email: $('#le').value, password: $('#lp').value }); saveSession({ token: r.token, user: r.user }); shell('exams'); }
+      catch (e) { showErr('#ae', e.message); busy(b, false); }
+    };
+    $('#lgo').onclick = go;
+    $('#lp').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    if (msg) showErr('#ae', msg);
+  }
+}
+
+/* ============================ SHELL ============================ */
+
+let NAVSEL = 'exams';
+function shell(view, arg) {
+  NAVSEL = ['exams', 'queue', 'live'].indexOf(view) >= 0 ? view : NAVSEL;
+  if (!$('#nav')) {
+    $('#app').innerHTML = `<header class="top">${brand(PORTAL_NAME)}
+      <div class="who"><span>${esc(SESSION.user.name)} · ${esc(SESSION.user.email)}</span>
+      <a class="btn ghost sm" href="/control/" target="_blank" rel="noopener" style="text-decoration:none">Master Control ↗</a><button class="btn ghost sm" id="out">Sign out</button></div></header>
+      <div class="stripe"></div>
+      <nav class="nav" id="nav"><button data-v="exams">Exams</button><button data-v="queue">Verification queue <span class="n" id="qn" style="display:none"></span></button><button data-v="live">Live Proctor</button></nav>
+      <main class="wrap" id="view"></main>`;
+    $('#nav').querySelectorAll('button').forEach(b => b.onclick = () => shell(b.dataset.v));
+    $('#out').onclick = async () => { try { await api('logout'); } catch (e) {} saveSession(null); authView('', 'in'); };
+    if ($('#full')) $('#full').onclick = openFullWindow;
+  }
+  $('#nav').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === NAVSEL));
+  VIEW++;
+  window.scrollTo(0, 0);
+  $('#view').innerHTML = '<div class="spin"></div>';
+  ({ exams: examsView, editor: editorView, attempts: attemptsView, attempt: attemptView, queue: queueView, live: liveView, candidates: candidatesView })[view](arg);
+}
+
+function setQueueBadge(n) { const q = $('#qn'); if (q) { q.textContent = n; q.style.display = n ? 'inline-block' : 'none'; } }
+
+/* ============================ EXAMS LIST ============================ */
+
+async function examsView() {
+  const my = VIEW;
+  let r;
+  try { r = await api('listExams'); } catch (e) { if (my === VIEW) $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  if (my !== VIEW) return;
+  EXAMS = r.exams;
+  const s = r.summary;
+  setQueueBadge(s.toVerify + s.toSend);
+  const cnt = (e, k) => e.counts[k] || 0;
+  $('#view').innerHTML = `
+    <div class="tiles">
+      <div class="tile ${s.live ? 'hl' : ''}"><b>${s.live}</b><span>Exams live now</span></div>
+      <div class="tile"><b>${s.inProgress}</b><span>Students writing</span></div>
+      <div class="tile"><b>${s.toVerify}</b><span>Awaiting verification</span></div>
+      <div class="tile"><b>${s.toSend}</b><span>Verified, result not sent</span></div>
+      <div class="tile"><b>${s.pendingStaff}</b><span>Staff requests pending</span></div>
+    </div>
+    ${s.pendingStaff ? `<div class="note amber" style="margin:-4px 0 16px">${s.pendingStaff} staff account request(s) are waiting. Approve them in the Google Sheet → <b>Staff</b> tab by changing Status to <b>Active</b>.</div>` : ''}
+    <div class="card"><div class="between"><div><div class="eyebrow">Examinations</div><h2 style="font-size:20px">All exams</h2></div><button class="btn green" id="newx">+ New exam</button></div>
+    ${EXAMS.length ? `<div class="tscroll"><table class="tbl mt"><thead><tr><th>Exam</th><th>Window (IST)</th><th>State</th><th>On/Off</th><th>Proctoring</th><th>Attempts</th><th></th></tr></thead><tbody>
+      ${EXAMS.map((e, i) => `<tr>
+        <td><div class="title">${esc(e.title)}</div>${e.courseCode ? `<span class="small" style="font-weight:700;color:var(--green-d)">${esc(e.courseCode)}</span> ` : ''}<span class="code">${esc(e.code)}</span> <span class="small muted">${e.totalMarks} marks${e.duration ? ' · ' + e.duration + ' min' : ''}${e.expected ? ' · ' + e.expected + ' expected' : ''}${e.hold ? ' · <b style="color:var(--red)">held</b>' : ''}</span>
+          ${e.mode === 'Pool' ? `<div class="small" style="margin-top:3px">${e.drawn ? '<span class="pill p-Verified">Paper drawn</span>' : e.pool ? `<span class="pill ${e.pool.ready ? 'p-Verified' : 'p-Submitted'}">${e.pool.ready ? 'Sealed pool ready' : 'Pool ' + e.pool.have + ' / ' + e.pool.need}</span>` : ''}</div>` : ''}
+          <div class="small muted">${e.reviewers.length ? 'Reviewers: ' + e.reviewers.map(esc).join(', ') : '<span style="color:var(--amber)">No reviewers assigned</span>'}</div></td>
+        <td class="small">${esc(e.startIST)}<br>→ ${esc(e.endIST)}</td>
+        <td><span class="${pillCls(e.state)}">${{ live: 'Live', upcoming: 'Upcoming', closed: 'Closed', off: 'Off' }[e.state]}</span></td>
+        <td><label class="sw"><input type="checkbox" data-tog="${i}" ${e.status === 'On' ? 'checked' : ''}><span></span></label></td>
+        <td><div class="icons"><i class="${e.camera ? 'on' : ''}">CAM</i><i class="${e.screen ? 'on' : ''}">SCREEN</i><i class="${e.fullscreen ? 'on' : ''}">FULL</i><i class="${e.live ? 'on' : ''}">LIVE</i></div></td>
+        <td class="small">${cnt(e, 'In Progress') ? `<b style="color:var(--blue)">${cnt(e, 'In Progress')} writing</b><br>` : ''}${cnt(e, 'Submitted') + cnt(e, 'Under Review') + cnt(e, 'Returned')} with reviewers<br>${cnt(e, 'Sent to CoE')} to verify · ${cnt(e, 'Result Sent')} sent</td>
+        <td><div class="row" style="flex-wrap:nowrap"><button class="btn ghost sm" data-ed="${i}">Edit</button><button class="btn ghost sm" data-cd="${i}">Candidates${e.counts._cand ? ' · ' + e.counts._cand : ''}</button><button class="btn ghost sm" data-at="${i}">Attempts</button>${e.live ? `<button class="btn sm" data-lv="${i}">Live</button>` : ''}</div></td></tr>`).join('')}
+    </tbody></table></div>` : `<div class="empty">No exams yet. Create your first exam.</div>`}</div>
+    <div class="foot">Times are Indian Standard Time (IST). Data is stored in the ACRI examinations Google Sheet.</div>`;
+  $('#newx').onclick = () => shell('editor', null);
+  $('#view').querySelectorAll('[data-ed]').forEach(b => b.onclick = () => shell('editor', EXAMS[b.dataset.ed].id));
+  $('#view').querySelectorAll('[data-at]').forEach(b => b.onclick = () => shell('attempts', EXAMS[b.dataset.at].id));
+  $('#view').querySelectorAll('[data-cd]').forEach(b => b.onclick = () => shell('candidates', EXAMS[b.dataset.cd].id));
+  $('#view').querySelectorAll('[data-lv]').forEach(b => b.onclick = () => shell('live', EXAMS[b.dataset.lv].id));
+  $('#view').querySelectorAll('[data-tog]').forEach(c => c.onchange = async () => {
+    const e = EXAMS[c.dataset.tog];
+    try { await api('setExamStatus', { examId: e.id, status: c.checked ? 'On' : 'Off' }); toast(e.title + ' switched ' + (c.checked ? 'On' : 'Off')); examsView(); }
+    catch (err) { c.checked = !c.checked; toast(err.message); }
+  });
+}
+
+/* ============================ EXAM EDITOR ============================ */
+
+let ED = null, REVIEWERS = [];
+
+async function editorView(examId) {
+  const my = VIEW;
+  try {
+    const [rv, ex] = await Promise.all([api('listReviewers'), examId ? api('getExam', { examId }) : Promise.resolve(null)]);
+    if (my !== VIEW) return;
+    REVIEWERS = rv.reviewers;
+    if (ex) {
+      const e = ex.exam;
+      ED = { id: e.id, title: e.title, description: e.description, instructions: e.instructions, code: e.code, start: e.startInput, end: e.endInput,
+        duration: e.duration || '', status: e.status, reviewers: e.reviewers.slice(), camera: e.camera, screen: e.screen, fullscreen: e.fullscreen,
+        live: e.live, maxWarnings: e.maxWarnings, shuffle: e.shuffle, questions: ex.questions, hasAttempts: ex.hasAttempts,
+        courseCode: e.courseCode, credits: e.credits, programme: e.programme, semester: e.semester, session: e.session, rollPrefix: e.rollPrefix,
+        bands: Object.assign({}, e.bands), registeredOnly: e.registeredOnly, expected: e.expected || '', priority: e.priority || 'Normal',
+        mode: e.mode, blueprint: ex.blueprint && ex.blueprint.sections.length ? ex.blueprint : defaultBlueprint(), moderators: (e.moderators || []).slice(),
+        isParent: ex.isParent, parentTitle: ex.parentTitle, parentId: ex.parentId, drawn: e.drawn };
+    } else {
+      ED = { id: '', courseCode: '', credits: '', programme: '', semester: '', session: '', rollPrefix: 'ACRI' + String(new Date().getFullYear()).slice(2) + '-',
+        bands: Object.fromEntries(GRADES.slice(0, 7).map(g => [g[0], g[3]])), registeredOnly: false, expected: '', priority: 'Normal',
+        mode: 'Pool', blueprint: defaultBlueprint(), moderators: [], isParent: true, parentTitle: '', parentId: '', drawn: false,
+        title: '', description: '', code: genCode(), start: '', end: '', duration: '', status: 'Off', reviewers: [], camera: true, screen: true, fullscreen: true, live: true, maxWarnings: 5, shuffle: false,
+        instructions: 'Read every question carefully.\nDo not switch tabs, leave fullscreen, or use any other device or AI tool.\nYour answers save automatically and the exam submits itself when time ends.',
+        questions: [{ id: '', type: 'MCQ', text: '', options: ['', '', '', ''], correct: null, marks: 1 }] };
+    }
+    renderEditor();
+  } catch (e) { if (my === VIEW) $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; }
+}
+
+function genCode() { const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = 'ACRI-'; for (let i = 0; i < 6; i++) s += c[Math.floor(Math.random() * c.length)]; return s; }
+
+function renderEditor() {
+  const e = ED;
+  const opts = REVIEWERS.filter(r => (r.role === 'Reviewer' || r.role === 'CoE') && e.reviewers.indexOf(r.email) < 0).map(r => `<option value="${esc(r.email)}">${esc(r.name)} — ${esc(r.email)}${r.role === 'CoE' ? ' (CoE)' : ''}</option>`).join('');
+  $('#view').innerHTML = `
+  <div class="between" style="margin-bottom:14px"><button class="link" id="back">← All exams</button><div class="row"><button class="btn ghost" id="cancel">Cancel</button><button class="btn green" id="save">Save exam</button></div></div>
+  ${e.hasAttempts ? `<div class="note amber" style="margin:0 0 14px">Students have already attempted this exam. Changing questions or marks now can make earlier answers inconsistent — edit with care.</div>` : ''}
+  <div class="card"><div class="eyebrow">${e.id ? 'Edit exam · ' + esc(e.id) : 'New exam'}</div><h2 style="font-size:20px">Exam details</h2>
+    <label class="f">Title</label><input class="in" data-k="title" value="${esc(e.title)}" placeholder="e.g. SBMC Entrance Assessment 2027">
+    <label class="f">Description <span class="muted">(shown to students before they start)</span></label><textarea class="in" data-k="description" rows="2">${esc(e.description)}</textarea>
+    <label class="f">Instructions</label><textarea class="in" data-k="instructions" rows="4">${esc(e.instructions)}</textarea>
+    <div class="g3">
+      <div><label class="f">Access code</label><div class="row" style="flex-wrap:nowrap"><input class="in" data-k="code" value="${esc(e.code)}" style="text-transform:uppercase;font-weight:700;letter-spacing:.06em"><button class="btn ghost sm" id="gen" title="Generate">↻</button></div></div>
+      <div><label class="f">Status</label><div class="row" style="height:40px"><label class="sw"><input type="checkbox" id="stOn" ${e.status === 'On' ? 'checked' : ''}><span></span></label><span id="stTxt" class="small" style="font-weight:600">${e.status === 'On' ? 'On — students can enter during the window' : 'Off — closed to students'}</span></div></div>
+      <div><label class="f">Max warnings before auto-submit <span class="muted">(0 = never)</span></label><input class="in" type="number" min="0" data-k="maxWarnings" value="${esc(e.maxWarnings)}"></div>
+    </div>
+  </div>
+  <div class="card"><div class="eyebrow">Course &amp; grading · UGC 10-point scale</div><h2 style="font-size:18px">Course details</h2>
+    <div class="g3">
+      <div><label class="f">Course code</label><input class="in" data-k="courseCode" value="${esc(e.courseCode)}" placeholder="e.g. SBMC-101" style="text-transform:uppercase"></div>
+      <div><label class="f">Credits</label><input class="in" type="number" min="0" step="0.5" data-k="credits" value="${esc(e.credits)}" placeholder="e.g. 4"></div>
+      <div><label class="f">Roll number prefix</label><input class="in" data-k="rollPrefix" value="${esc(e.rollPrefix)}" placeholder="ACRI26-" style="text-transform:uppercase"></div>
+      <div><label class="f">Programme</label><input class="in" data-k="programme" value="${esc(e.programme)}" placeholder="e.g. Certificate in Business Management"></div>
+      <div><label class="f">Semester / term</label><input class="in" data-k="semester" value="${esc(e.semester)}" placeholder="e.g. Semester I"></div>
+      <div><label class="f">Academic session</label><input class="in" data-k="session" value="${esc(e.session)}" placeholder="e.g. 2026–27"></div>
+    </div>
+    <label class="chk" style="margin-top:12px"><input type="checkbox" data-c="registeredOnly" ${e.registeredOnly ? 'checked' : ''}><span><b>Only registered candidates can sit</b><span class="small muted">Students must use the email on their admit card. Add candidates from the exam's Candidates page.</span></span></label>
+    <h3 style="font-size:15px;margin-top:10px">Grade cut-offs</h3>
+    <p class="small muted" style="margin:2px 0 8px">Letter grades and grade points follow the UGC scale. Set the minimum percentage for each grade; P is the pass mark.</p>
+    <div class="tscroll"><table class="tbl"><thead><tr><th>Grade</th><th>Meaning</th><th>Grade point</th><th>Minimum %</th></tr></thead><tbody>
+      ${GRADES.map(g => `<tr><td><b>${g[0]}</b></td><td>${g[1]}</td><td>${g[2]}</td><td>${g[0] === 'F' ? '<span class="small muted">Below the P cut-off</span>' : `<input class="in" type="number" min="1" max="100" step="0.5" data-band="${g[0]}" value="${esc(e.bands[g[0]])}" style="width:110px">`}</td></tr>`).join('')}
+    </tbody></table></div>
+    <button class="link small mt" id="bandReset">Reset to default cut-offs</button>
+  </div>
+  <div class="card"><div class="eyebrow">Schedule · Indian Standard Time</div><h2 style="font-size:18px">When the exam is open</h2>
+    <div class="g3">
+      <div><label class="f">Starts (IST)</label><input class="in" type="datetime-local" data-k="start" value="${esc(e.start)}"></div>
+      <div><label class="f">Ends (IST)</label><input class="in" type="datetime-local" data-k="end" value="${esc(e.end)}"></div>
+      <div><label class="f">Time per student, minutes <span class="muted">(blank = until end)</span></label><input class="in" type="number" min="0" data-k="duration" value="${esc(e.duration)}"></div>
+    </div>
+    <p class="small muted" style="margin:8px 0 0">Students can only start while the exam is <b>On</b> and inside this window. Each student's timer is the smaller of their time limit and the exam end time; it submits automatically at zero.</p>
+    <div class="g3">
+      <div><label class="f">Expected number of candidates</label><input class="in" type="number" min="0" data-k="expected" value="${esc(e.expected)}" placeholder="e.g. 120"></div>
+      <div><label class="f">Priority if the system is overloaded</label><select class="in" data-k="priority">${['High', 'Normal', 'Low', 'Never pause'].map(p => `<option ${p === e.priority ? 'selected' : ''}>${p}</option>`).join('')}</select></div>
+      <div><label class="f">&nbsp;</label><button class="btn ghost" id="capChk" style="width:100%">Check capacity</button></div>
+    </div>
+    <div id="capbox"></div>
+  </div>
+  <div class="card"><div class="eyebrow">Marking</div><h2 style="font-size:18px">Reviewers</h2>
+    <div class="rchips">${e.reviewers.length ? e.reviewers.map((r, i) => `<span class="rchip">${esc(r)}<button data-rr="${i}" title="Remove">×</button></span>`).join('') : '<span class="small muted">No reviewers yet.</span>'}</div>
+    <div class="row"><select class="in" id="rsel" style="max-width:420px"><option value="">Add a reviewer…</option>${opts}</select><button class="btn ghost" id="radd">Add</button></div>
+    <p class="small muted" style="margin:8px 0 0">Only active staff accounts appear here. New reviewers request an account on the reviewer portal; you activate them in the Sheet.</p>
+  </div>
+  <div class="card"><div class="eyebrow">Proctoring</div><h2 style="font-size:18px">Choose what to monitor</h2>
+    ${[['camera', 'Live camera proctoring', 'Webcam snapshots are stored regularly and whenever a warning happens.'],
+       ['screen', 'Screen proctoring', 'Students share their entire screen. Captures continue even when they switch tabs.'],
+       ['fullscreen', 'Fullscreen required', 'The exam runs in fullscreen; leaving it is a warning and blocks the paper until they return.'],
+       ['live', 'Live Proctor grid', 'A near-live grid of every student\'s screen and webcam for you and assigned reviewers, refreshing every few seconds.'],
+       ['shuffle', 'Shuffle question order', 'Each student sees the questions in a different order.']]
+      .map(([k, t, d]) => `<label class="chk"><input type="checkbox" data-c="${k}" ${e[k] ? 'checked' : ''}><span><b>${t}</b><span class="small muted">${d}</span></span></label>`).join('')}
+    <div class="note blue">Always on: tab-switch and focus detection, copy/paste/right-click and shortcut blocking, and auto-submit when time ends.</div>
+  </div>
+  <div class="card"><div class="eyebrow">Paper</div><h2 style="font-size:18px">Where the paper comes from</h2>
+    <div class="g2 mt" style="gap:12px">
+      <label class="chk" style="border:1.5px solid ${e.mode === 'Pool' ? 'var(--green)' : 'var(--line)'};border-radius:12px;padding:12px;background:${e.mode === 'Pool' ? 'var(--green-bg)' : '#fff'}"><input type="radio" name="pmode" value="Pool" ${e.mode === 'Pool' ? 'checked' : ''} ${e.drawn ? 'disabled' : ''}><span><b>Sealed question pool (recommended)</b><span class="small muted">Setters write questions; the system draws a different random paper for every session.</span></span></label>
+      <label class="chk" style="border:1.5px solid ${e.mode !== 'Pool' ? 'var(--blue-l)' : 'var(--line)'};border-radius:12px;padding:12px;background:${e.mode !== 'Pool' ? 'var(--blue-bg)' : '#fff'}"><input type="radio" name="pmode" value="Direct" ${e.mode !== 'Pool' ? 'checked' : ''} ${e.drawn ? 'disabled' : ''}><span><b>I’ll write the paper myself</b><span class="small muted">One fixed paper, visible to the CoE. Every batch gets the same questions.</span></span></label>
+    </div>
+    ${e.mode === 'Pool' ? poolCardHtml() : `<div class="between" style="margin-top:16px"><h3 style="font-size:15px">Questions</h3><div class="small" style="font-weight:700;color:var(--navy)" id="tot"></div></div>
+    <div id="qlist"></div>
+    <div class="row mt"><button class="btn ghost" id="addM">+ Multiple-choice question</button><button class="btn ghost" id="addW">+ Written question</button></div>`}
+  </div>
+  <div class="sticky"><div class="between"><div class="err" id="ee" style="margin:0;flex:1"></div><div class="spacer"></div><button class="btn green" id="save2">Save exam</button></div></div>`;
+
+  $('#view').querySelectorAll('[data-k]').forEach(el => el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => {
+    ED[el.dataset.k] = el.value;
+    if (['expected', 'start', 'end', 'duration'].indexOf(el.dataset.k) >= 0) capCheckSoon();
+  }));
+  $('#view').querySelectorAll('[data-c]').forEach(el => el.addEventListener('change', () => { ED[el.dataset.c] = el.checked; if (['camera', 'screen', 'live'].indexOf(el.dataset.c) >= 0) capCheckSoon(); }));
+  $('#capChk').onclick = () => capCheck();
+  if (Number(ED.expected) > 0 && ED.start && ED.end) capCheck();
+  $('#view').querySelectorAll('[data-band]').forEach(el => el.addEventListener('input', () => ED.bands[el.dataset.band] = el.value));
+  $('#bandReset').onclick = () => { ED.bands = Object.fromEntries(GRADES.slice(0, 7).map(g => [g[0], g[3]])); renderEditor(); };
+  $('#stOn').onchange = () => { ED.status = $('#stOn').checked ? 'On' : 'Off'; $('#stTxt').textContent = ED.status === 'On' ? 'On — students can enter during the window' : 'Off — closed to students'; };
+  $('#gen').onclick = () => { ED.code = genCode(); $('[data-k=code]').value = ED.code; };
+  $('#view').querySelectorAll('[data-rr]').forEach(b => b.onclick = () => { ED.reviewers.splice(+b.dataset.rr, 1); renderEditor(); });
+  $('#radd').onclick = () => { const v = $('#rsel').value; if (v) { ED.reviewers.push(v); renderEditor(); } };
+  $('#back').onclick = $('#cancel').onclick = () => shell('exams');
+  document.querySelectorAll('input[name=pmode]').forEach(r => r.onchange = () => {
+    ED.mode = r.value;
+    if (ED.mode === 'Direct' && !ED.questions.length) ED.questions.push({ id: '', type: 'MCQ', text: '', options: ['', '', '', ''], correct: null, marks: 1 });
+    renderEditor();
+  });
+  $('#save').onclick = $('#save2').onclick = saveExam;
+  if (ED.mode === 'Pool') bindPool();
+  else {
+    $('#addM').onclick = () => { ED.questions.push({ id: '', type: 'MCQ', text: '', options: ['', '', '', ''], correct: null, marks: 1 }); renderQuestions(true); };
+    $('#addW').onclick = () => { ED.questions.push({ id: '', type: 'Written', text: '', options: [], correct: null, marks: 5 }); renderQuestions(true); };
+    renderQuestions();
+  }
+}
+
+function renderQuestions(scrollEnd) {
+  const qs = ED.questions;
+  $('#qlist').innerHTML = qs.map((q, i) => `<div class="qc">
+    <div class="hd"><span class="num">Q${i + 1}</span>
+      <select class="in" data-q="${i}" data-f="type" style="width:auto"><option value="MCQ" ${q.type === 'MCQ' ? 'selected' : ''}>Multiple choice (auto-marked)</option><option value="Written" ${q.type !== 'MCQ' ? 'selected' : ''}>Written answer (reviewer marks)</option></select>
+      <span class="small muted">Marks</span><input class="in" type="number" min="0.5" step="0.5" data-q="${i}" data-f="marks" value="${esc(q.marks)}" style="width:80px">
+      <div class="spacer"></div>
+      <button class="btn ghost sm" data-mv="${i}:-1" ${i === 0 ? 'disabled' : ''}>↑</button><button class="btn ghost sm" data-mv="${i}:1" ${i === qs.length - 1 ? 'disabled' : ''}>↓</button><button class="btn ghost sm" data-del="${i}" style="color:var(--red)">Delete</button>
+    </div>
+    <textarea class="in" data-q="${i}" data-f="text" rows="3" placeholder="Question text">${esc(q.text)}</textarea>
+    ${q.type === 'MCQ' ? `<div class="small muted" style="margin-top:8px">Options — select the correct answer:</div>
+      ${q.options.map((o, j) => `<div class="opt"><input type="radio" name="c${i}" data-q="${i}" data-cor="${j}" ${q.correct === j ? 'checked' : ''} title="Correct answer"><span class="L">${String.fromCharCode(65 + j)}</span><input class="in" data-q="${i}" data-o="${j}" value="${esc(o)}" placeholder="Option ${String.fromCharCode(65 + j)}">${q.options.length > 2 ? `<button class="btn ghost sm" data-rmo="${i}:${j}">×</button>` : ''}</div>`).join('')}
+      ${q.options.length < 8 ? `<button class="link small" data-addo="${i}" style="margin-top:8px">+ Add option</button>` : ''}` : ''}
+  </div>`).join('') || '<div class="empty">No questions yet.</div>';
+  const L = $('#qlist');
+  L.querySelectorAll('[data-f]').forEach(el => el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => {
+    const q = ED.questions[el.dataset.q], f = el.dataset.f;
+    if (f === 'type') { q.type = el.value; if (q.type === 'MCQ' && q.options.length < 2) q.options = ['', '', '', '']; renderQuestions(); }
+    else q[f] = f === 'marks' ? el.value : el.value;
+    total();
+  }));
+  L.querySelectorAll('[data-o]').forEach(el => el.addEventListener('input', () => ED.questions[el.dataset.q].options[el.dataset.o] = el.value));
+  L.querySelectorAll('[data-cor]').forEach(el => el.addEventListener('change', () => ED.questions[el.dataset.q].correct = +el.dataset.cor));
+  L.querySelectorAll('[data-addo]').forEach(b => b.onclick = () => { ED.questions[b.dataset.addo].options.push(''); renderQuestions(); });
+  L.querySelectorAll('[data-rmo]').forEach(b => b.onclick = () => {
+    const [i, j] = b.dataset.rmo.split(':').map(Number), q = ED.questions[i];
+    q.options.splice(j, 1);
+    if (q.correct === j) q.correct = null; else if (q.correct > j) q.correct--;
+    renderQuestions();
+  });
+  L.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => { const [i, d] = b.dataset.mv.split(':').map(Number); const a = ED.questions; [a[i], a[i + d]] = [a[i + d], a[i]]; renderQuestions(); });
+  L.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+    if (ED.questions[b.dataset.del].text && !(await confirmBox('Delete question?', 'This removes question ' + (+b.dataset.del + 1) + ' from the paper.', 'Delete', 'red'))) return;
+    ED.questions.splice(+b.dataset.del, 1); renderQuestions();
+  });
+  total();
+  if (scrollEnd) L.lastElementChild && L.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function total() {
+  const t = ED.questions.reduce((s, q) => s + (Number(q.marks) || 0), 0);
+  const m = ED.questions.filter(q => q.type === 'MCQ').length;
+  $('#tot').textContent = ED.questions.length + ' questions · ' + m + ' MCQ · ' + (ED.questions.length - m) + ' written · ' + t + ' marks';
+}
+
+function examPayload() {
+  const e = ED;
+  const exam = { id: e.id, title: e.title, description: e.description, instructions: e.instructions, code: String(e.code).toUpperCase(), start: e.start, end: e.end,
+    duration: e.duration, status: e.status, reviewers: e.reviewers, camera: !!e.camera, screen: !!e.screen, fullscreen: !!e.fullscreen, live: !!e.live,
+    maxWarnings: e.maxWarnings, shuffle: !!e.shuffle, courseCode: e.courseCode, credits: e.credits, programme: e.programme,
+    semester: e.semester, session: e.session, rollPrefix: e.rollPrefix, bands: e.bands, registeredOnly: !!e.registeredOnly,
+    expected: e.expected, priority: e.priority, mode: e.mode,
+    blueprint: { sections: e.blueprint.sections.map(s => ({ name: s.name, type: s.type, count: Number(s.count), marks: Number(s.marks), mix: s.mix })) }, moderators: e.moderators };
+  const questions = (e.mode === 'Pool' ? [] : e.questions).map(q => ({ id: q.id, type: q.type, text: q.text, options: q.type === 'MCQ' ? q.options : [], correct: q.type === 'MCQ' ? q.correct : null, marks: Number(q.marks) }));
+  return { exam, questions };
+}
+
+async function saveExam() {
+  showErr('#ee');
+  const e = ED, { exam, questions } = examPayload();
+  const b1 = $('#save'), b2 = $('#save2'); busy(b1, true, 'Saving…'); busy(b2, true, 'Saving…');
+  try {
+    const r = await api('saveExam', { exam, questions });
+    toast('Exam saved' + (e.id ? '' : ' — ID ' + r.examId));
+    shell('exams');
+  } catch (err) { showErr('#ee', err.message); busy(b1, false); busy(b2, false); }
+}
+
+/* ---- sealed question pool (blueprint, setters, moderators) ---- */
+
+const DIFFS = ['Easy', 'Medium', 'Hard'];
+function defaultBlueprint() {
+  return { sections: [
+    { name: 'Section A — Objective', type: 'MCQ', count: 10, marks: 1, mix: { Easy: 3, Medium: 5, Hard: 2 } },
+    { name: 'Section B — Written', type: 'Written', count: 3, marks: 5, mix: { Easy: 1, Medium: 1, Hard: 1 } }] };
+}
+function autoMix(c) { const e = Math.round(c * 0.3), h = Math.round(c * 0.2); return { Easy: e, Medium: Math.max(0, c - e - h), Hard: h }; }
+
+function poolCardHtml() {
+  const e = ED;
+  if (!e.isParent) return `<div class="note blue mt">This batch draws its own paper, at random, from the question pool of <b>${esc(e.parentTitle)}</b>. The blueprint, paper setters and moderators are managed there.</div>
+    <button class="btn ghost mt" id="openParent">Open ${esc(e.parentTitle)}</button><div id="poolstat"></div>`;
+  const mods = REVIEWERS.filter(r => r.role === 'Moderator' && e.moderators.indexOf(r.email) < 0);
+  return `<div class="note green mt" style="font-size:13.5px"><b>Sealed paper.</b> Paper setters write questions into a pool. When each session opens, the system draws that session’s paper at random from questions no earlier session used. Nobody — including the Controller of Examinations — sees or chooses the paper in advance. Every exam needs at least 3 sets (one per batch plus a reserve).</div>
+    <h3 style="font-size:15px;margin-top:16px">Blueprint — what every paper must contain</h3>
+    ${e.drawn ? '<p class="small" style="color:var(--amber)">A paper has been drawn from this blueprint, so it is locked.</p>' : ''}
+    <div class="tscroll"><table class="tbl" id="bpt"><thead><tr><th>Section</th><th>Type</th><th>Questions</th><th>Marks each</th><th>Easy</th><th>Medium</th><th>Hard</th><th>Marks</th><th></th></tr></thead><tbody>
+      ${e.blueprint.sections.map((s, i) => `<tr>
+        <td><input class="in" data-b="${i}" data-f="name" value="${esc(s.name)}" style="min-width:170px"></td>
+        <td><select class="in" data-b="${i}" data-f="type" style="width:auto"><option value="MCQ" ${s.type === 'MCQ' ? 'selected' : ''}>MCQ</option><option value="Written" ${s.type === 'Written' ? 'selected' : ''}>Written</option></select></td>
+        <td><input class="in" type="number" min="1" data-b="${i}" data-f="count" value="${s.count}" style="width:76px"></td>
+        <td><input class="in" type="number" min="0.5" step="0.5" data-b="${i}" data-f="marks" value="${s.marks}" style="width:76px"></td>
+        ${DIFFS.map(d => `<td><input class="in" type="number" min="0" data-b="${i}" data-d="${d}" value="${s.mix[d]}" style="width:66px"></td>`).join('')}
+        <td><b data-bt="${i}">${s.count * s.marks}</b></td>
+        <td>${e.blueprint.sections.length > 1 ? `<button class="btn ghost sm" data-brm="${i}" style="color:var(--red)">×</button>` : ''}</td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="between mt"><button class="link small" id="bpAdd">+ Add section</button><span class="small" style="font-weight:700;color:var(--navy)" id="bpTot"></span></div>
+    <div class="err" id="bpErr"></div>
+    <h3 style="font-size:15px;margin-top:18px">Moderators <span class="muted" style="font-weight:400">(optional — when set, only approved questions can be drawn)</span></h3>
+    <div class="rchips">${e.moderators.length ? e.moderators.map((m, i) => `<span class="rchip">${esc(m)}<button data-mr="${i}" title="Remove">×</button></span>`).join('') : '<span class="small muted">No moderator — submitted questions can be drawn directly.</span>'}</div>
+    <div class="row"><select class="in" id="msel" style="max-width:420px"><option value="">Add a moderator…</option>${mods.map(r => `<option value="${esc(r.email)}">${esc(r.name)} — ${esc(r.email)}</option>`).join('')}</select><button class="btn ghost" id="madd">Add</button></div>
+    <div id="poolstat">${e.id ? '<div class="small muted mt">Loading pool status…</div>' : '<div class="note amber mt">Save the exam to assign paper setters.</div>'}</div>`;
+}
+
+function bindPool() {
+  if ($('#openParent')) { $('#openParent').onclick = () => shell('editor', ED.parentId); loadPoolStatus(); return; }
+  const lock = ED.drawn;
+  document.querySelectorAll('#bpt input, #bpt select').forEach(el => { el.disabled = lock; });
+  document.querySelectorAll('[data-b]').forEach(el => el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => {
+    const s = ED.blueprint.sections[el.dataset.b];
+    if (el.dataset.d) s.mix[el.dataset.d] = Number(el.value) || 0;
+    else if (el.dataset.f === 'count') { s.count = Number(el.value) || 0; s.mix = autoMix(s.count); DIFFS.forEach(d => { const x = document.querySelector(`[data-b="${el.dataset.b}"][data-d="${d}"]`); if (x) x.value = s.mix[d]; }); }
+    else s[el.dataset.f] = el.dataset.f === 'marks' ? Number(el.value) || 0 : el.value;
+    bpTotals();
+  }));
+  document.querySelectorAll('[data-brm]').forEach(b => b.onclick = () => { ED.blueprint.sections.splice(+b.dataset.brm, 1); renderEditor(); });
+  $('#bpAdd').onclick = () => { if (lock) return; ED.blueprint.sections.push({ name: 'Section ' + String.fromCharCode(65 + ED.blueprint.sections.length), type: 'MCQ', count: 5, marks: 1, mix: autoMix(5) }); renderEditor(); };
+  document.querySelectorAll('[data-mr]').forEach(b => b.onclick = () => { ED.moderators.splice(+b.dataset.mr, 1); renderEditor(); });
+  $('#madd').onclick = () => { const v = $('#msel').value; if (v) { ED.moderators.push(v); renderEditor(); } };
+  bpTotals();
+  if (ED.id) loadPoolStatus();
+}
+
+function bpTotals() {
+  const S = ED.blueprint.sections;
+  let q = 0, m = 0; const errs = [];
+  S.forEach((s, i) => {
+    q += s.count; m += s.count * s.marks;
+    const t = document.querySelector(`[data-bt="${i}"]`); if (t) t.textContent = s.count * s.marks;
+    const sum = DIFFS.reduce((a, d) => a + (Number(s.mix[d]) || 0), 0);
+    if (sum !== s.count) errs.push(`${s.name || 'Section ' + (i + 1)}: easy + medium + hard = ${sum}, but it has ${s.count} questions.`);
+  });
+  if ($('#bpTot')) $('#bpTot').textContent = `Each paper: ${q} questions · ${m} marks`;
+  showErr('#bpErr', errs.join(' '));
+}
+
+async function loadPoolStatus() {
+  const box = $('#poolstat'); if (!box || !ED.id) return;
+  try {
+    const r = await api('poolStatus', { examId: ED.id });
+    if (!$('#poolstat')) return;
+    POOLST = r;
+    const c = r.coverage;
+    const secs = ED.blueprint.sections.map((s, i) => ({ key: String.fromCharCode(65 + i), name: s.name }));
+    const need = k => c ? c.cells.filter(x => x.section === k).reduce((t, x) => t + x.need, 0) : 0;
+    const asg = k => r.assignments.filter(a => a.section === k).reduce((t, a) => t + a.count, 0);
+    box.innerHTML = `
+      <div class="between" style="margin-top:20px"><h3 style="font-size:15px">Question pool</h3>${c ? `<span class="pill ${c.ready ? 'p-Verified' : 'p-Submitted'}" style="font-size:12.5px">${c.ready ? 'Ready — ' + c.remaining + ' set(s) available' : 'Not ready'}</span>` : ''}</div>
+      ${c ? `<p class="small muted" style="margin:4px 0 8px">Sets needed: <b>${c.sets}</b> (${r.batches.length} batch${r.batches.length === 1 ? '' : 'es'} + reserve, minimum 3) · already drawn: <b>${c.drawn}</b>. The pool must hold enough unused questions for the remaining ${c.remaining} set(s), with no question used twice.${c.moderated ? ' Only <b>approved</b> questions count.' : ''}</p>
+      <div class="tscroll"><table class="tbl"><thead><tr><th>Section</th><th>Difficulty</th><th>Needed</th><th>Ready</th><th>Waiting</th><th></th></tr></thead><tbody>
+        ${c.cells.map(x => `<tr><td>${esc(x.name)}</td><td>${x.difficulty}</td><td>${x.need}</td><td><b>${x.have}</b></td><td class="small muted">${x.waiting ? x.waiting + (c.moderated ? ' awaiting moderation' : ' draft') : '—'}</td>
+          <td>${x.have >= x.need ? '<span class="pill p-Verified">✓</span>' : `<span class="pill p-Returned">short ${x.need - x.have}</span>`}</td></tr>`).join('')}
+      </tbody></table></div>` : ''}
+      <p class="small muted" style="margin:8px 0 0">You see counts only — never the questions.</p>
+      <h3 style="font-size:15px;margin-top:18px">Paper setters</h3>
+      ${r.assignments.length ? `<div class="tscroll"><table class="tbl"><thead><tr><th>Setter</th><th>Section</th><th>Assigned</th><th>Draft</th><th>Submitted</th><th>Approved</th><th>Rejected</th><th>Due</th><th></th></tr></thead><tbody>
+        ${r.assignments.map((a, i) => `<tr><td><div class="title">${esc(a.setterName || a.setter)}</div><div class="small muted">${esc(a.setter)}</div></td><td class="small">${esc(a.sectionName)}</td><td><b>${a.count}</b></td>
+          <td>${a.drafts}</td><td>${a.submitted}</td><td>${a.approved}</td><td>${a.rejected ? `<b style="color:var(--red)">${a.rejected}</b>` : 0}</td><td class="small">${esc(a.due || '—')}</td>
+          <td><button class="btn ghost sm" data-ra="${i}" style="color:var(--red)">Remove</button></td></tr>`).join('')}</tbody></table></div>` : '<p class="small muted">No setters assigned yet.</p>'}
+      ${r.isParent ? `<div class="g3" style="align-items:end;margin-top:6px">
+        <div><label class="f">Setter</label><select class="in" id="asSet"><option value="">Choose…</option>${r.setters.map(s => `<option value="${esc(s.email)}">${esc(s.name)} — ${esc(s.email)}</option>`).join('')}</select></div>
+        <div><label class="f">Section</label><select class="in" id="asSec">${secs.map(s => `<option value="${s.key}">${esc(s.name)} (need ${need(s.key)}, assigned ${asg(s.key)})</option>`).join('')}</select></div>
+        <div class="row" style="flex-wrap:nowrap;gap:8px"><div style="flex:1"><label class="f">Questions</label><input class="in" type="number" min="1" id="asCnt"></div><div style="flex:1.4"><label class="f">Due</label><input class="in" type="date" id="asDue"></div></div></div>
+        <label class="f">Note to the setter <span class="muted">(optional — syllabus, topics, style)</span></label><input class="in" id="asNote">
+        <div class="row mt"><button class="btn" id="asGo">Assign setter</button>${r.setters.length ? '' : '<span class="small muted">No paper-setter accounts yet. Setters request one at oes.acriindia.org.in/papers; activate them in the Staff tab.</span>'}</div><div class="err" id="asErr"></div>` : ''}
+      <h3 style="font-size:15px;margin-top:18px">Sessions</h3>
+      <table class="tbl"><thead><tr><th>Batch</th><th>Window (IST)</th><th>Paper</th></tr></thead><tbody>
+        ${r.batches.map(b => `<tr><td>${esc(b.title)}</td><td class="small">${esc(b.window)}</td><td>${b.drawn ? `<span class="pill p-Verified">Drawn ${esc(b.drawnAt)}</span>` : '<span class="pill">Sealed — drawn when the session opens</span>'}</td></tr>`).join('')}</tbody></table>
+      <div class="row mt"><button class="btn ghost sm" id="poolRef">Refresh</button><div class="spacer"></div><button class="btn ghost sm" id="unseal" style="color:var(--red)">Emergency unseal…</button></div>`;
+    const updCnt = () => { const k = $('#asSec') && $('#asSec').value; if (k && $('#asCnt')) $('#asCnt').value = Math.max(1, need(k) - asg(k)); };
+    if ($('#asSec')) { $('#asSec').onchange = updCnt; updCnt(); }
+    if ($('#asGo')) $('#asGo').onclick = async () => {
+      showErr('#asErr'); const b = $('#asGo'); busy(b, true, 'Assigning…');
+      try { await api('assignSetter', { examId: ED.id, setter: $('#asSet').value, section: $('#asSec').value, count: $('#asCnt').value, due: $('#asDue').value, note: $('#asNote').value }); toast('Setter assigned and emailed'); loadPoolStatus(); }
+      catch (err) { showErr('#asErr', err.message); busy(b, false); }
+    };
+    box.querySelectorAll('[data-ra]').forEach(b => b.onclick = async () => {
+      const a = r.assignments[b.dataset.ra];
+      if (!(await confirmBox('Remove this assignment?', esc(a.setterName || a.setter) + ' will no longer see this task. Questions already written stay in the pool.', 'Remove', 'red'))) return;
+      try { await api('removeAssignment', { assignId: a.id }); loadPoolStatus(); } catch (err) { toast(err.message); }
+    });
+    $('#poolRef').onclick = loadPoolStatus;
+    $('#unseal').onclick = async () => {
+      const reason = await confirmBox('Emergency unseal', 'This shows every question in the sealed pool. It is recorded in the audit log and the administrator is emailed immediately. Unused questions should then be treated as seen. Write the reason:', 'Unseal and view', 'red', true, 'e.g. Setter reported a wrong answer key in Section A; checking before the session.');
+      if (reason === null) return;
+      try {
+        const x = await api('poolUnseal', { examId: ED.id, reason });
+        modal(`<h2 style="color:var(--red)">Sealed pool — ${x.questions.length} questions</h2><p class="small muted">This viewing has been logged and reported.</p>
+          <div style="max-height:60vh;overflow:auto">${x.questions.map(q => `<div class="ans"><div class="small" style="font-weight:700;color:var(--blue)">${esc(q.section)} · ${esc(q.difficulty)} · ${esc(q.status)} · ${esc(q.used)} · ${esc(q.setter)}</div><div class="q">${esc(q.text)}</div>${q.options.map((o, j) => `<div class="o ${j === q.correct ? 'right' : ''}">${String.fromCharCode(65 + j)}. ${esc(o)}${j === q.correct ? ' ✓' : ''}</div>`).join('')}</div>`).join('')}</div>
+          <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeModal()">Close</button></div>`, true);
+      } catch (err) { toast(err.message, 5000); }
+    };
+  } catch (err) { box.innerHTML = `<div class="note red">${esc(err.message)}</div>`; }
+}
+let POOLST = null;
+
+/* ---- capacity check (uses the Master Control capacity model) ---- */
+
+function capCheckSoon() { clearTimeout(capCheckSoon.t); capCheckSoon.t = setTimeout(capCheck, 700); }
+
+async function capCheck() {
+  const box = $('#capbox'); if (!box) return;
+  const e = ED;
+  box.innerHTML = '<div class="small muted mt">Checking capacity…</div>';
+  try {
+    const r = await api('capacityPlan', { exam: { id: e.id, start: e.start, end: e.end, duration: e.duration, camera: !!e.camera, screen: !!e.screen, live: !!e.live, expected: e.expected } });
+    if (!$('#capbox')) return;
+    CAPPLAN = r;
+    const col = { 'Fits': 'green', 'Tight': 'amber', 'Use batches': 'amber', 'No capacity': 'red' }[r.verdict] || 'blue';
+    box.innerHTML = `<div class="note ${col}" style="margin-top:14px">
+      <div class="between"><b style="font-size:15px">${esc(r.verdict === 'Use batches' ? 'Too many for one go — use batches' : r.verdict)}</b>${r.pct != null ? `<span class="small">${r.pct}% of usable capacity at peak</span>` : ''}</div>
+      <div style="margin-top:4px">${esc(r.message)}</div>
+      ${r.alt ? `<div style="margin-top:4px">${esc(r.alt)}</div>` : ''}</div>
+      <div class="small muted" style="margin-top:8px">With these proctoring settings the system takes about <b>${r.aloneMax}</b> students at once on its own${r.others && r.others.length ? `; other exams in this window use ${r.otherLoadPct}% (peak at ${esc(r.peakAtIST)} IST), leaving room for <b>${r.perBatch}</b>` : ''}.
+        ${r.capacity.estimated ? ' Capacity is an <b>estimate</b> until a stress test is run on Master Control.' : ' Capacity measured ' + esc(r.capacity.testedAt) + '.'}</div>
+      ${r.others && r.others.length ? `<div class="small muted" style="margin-top:4px">Overlapping: ${r.others.map(o => esc(o.title) + ' (' + esc(o.window) + ', ' + (o.expected || '?') + ' candidates)').join('; ')}</div>` : ''}
+      ${r.plan ? `<div class="tscroll"><table class="tbl mt"><thead><tr><th>Batch</th><th>Window (IST)</th><th>Candidates</th></tr></thead><tbody>
+        ${r.plan.map(b => `<tr><td><b>Batch ${b.n}</b></td><td>${esc(b.startIST)} – ${esc(b.endIST)}</td><td>${b.size}</td></tr>`).join('')}</tbody></table></div>
+        <p class="small muted" style="margin:6px 0 0">${esc(r.planRule || '')}</p>` : ''}
+      ${r.planNote ? `<div class="note amber">${esc(r.planNote)}</div>` : ''}
+      ${r.plan ? (ED.hasAttempts ? '<p class="small muted">This exam already has attempts, so it can’t be split.</p>'
+        : `<div class="row mt"><button class="btn" id="mkBatches">Save &amp; split into ${r.plan.length} batches</button><span class="small muted">Batch 1 keeps this exam; the others are copies with their own access codes. Registered candidates are divided by roll number.</span></div>`) : ''}`;
+    if ($('#mkBatches')) $('#mkBatches').onclick = makeBatches;
+  } catch (err) { box.innerHTML = `<div class="note red">${esc(err.message)}</div>`; }
+}
+let CAPPLAN = null;
+
+async function makeBatches() {
+  const plan = CAPPLAN && CAPPLAN.plan;
+  if (!plan) return;
+  const msg = ED.mode === 'Pool'
+    ? 'This exam becomes Batch 1 (' + esc(plan[0].startIST) + ' – ' + esc(plan[0].endIST) + '). ' + (plan.length - 1) + ' more sessions are created with their own access codes. <b>Each session draws a different random paper</b> from the pool, so the pool must hold ' + Math.max(3, plan.length + 1) + ' sets. Registered candidates are divided between sessions; send admit cards again afterwards.'
+    : 'This exam becomes Batch 1 (' + esc(plan[0].startIST) + ' – ' + esc(plan[0].endIST) + '). ' + (plan.length - 1) + ' copies are created with <b>the same questions</b>, their own access codes and the windows shown. For a different paper in every batch, switch to the sealed question pool first. Registered candidates are divided between them; send admit cards again afterwards.';
+  if (!(await confirmBox('Split into ' + plan.length + ' batches?', msg, 'Split exam', 'green'))) return;
+  const b = $('#mkBatches'); busy(b, true, 'Saving and splitting…');
+  try {
+    const { exam, questions } = examPayload();
+    const saved = await api('saveExam', { exam, questions });
+    const r = await api('createBatches', { examId: saved.examId, plan: plan });
+    toast(plan.length + ' batches created' + (r.moved ? ', ' + r.moved + ' candidates moved' : ''), 4500);
+    shell('exams');
+  } catch (err) { toast(err.message, 5000); busy(b, false); }
+}
+
+/* ============================ ATTEMPTS ============================ */
+
+let ATT_FILTER = 'All';
+async function attemptsView(examId) {
+  const my = VIEW;
+  let r;
+  try { r = await api('listAttempts', { examId }); } catch (e) { if (my === VIEW) $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  if (my !== VIEW) return;
+  const statuses = ['All', 'In Progress', 'Submitted', 'Under Review', 'Sent to CoE', 'Returned', 'Verified', 'Result Sent', 'Voided'];
+  const draw = () => {
+    const list = r.attempts.filter(a => ATT_FILTER === 'All' || a.status === ATT_FILTER);
+    $('#view').innerHTML = `<div class="between" style="margin-bottom:14px"><button class="link" id="back">← All exams</button>${r.exam.live ? '<button class="btn" id="lv">Open Live Proctor</button>' : ''}</div>
+    <div class="card"><div class="between"><div><div class="eyebrow">Attempts</div><h2 style="font-size:20px">${esc(r.exam.title)}</h2></div><button class="btn ghost sm" id="cands">Candidates &amp; admit cards</button></div>
+      <p class="small muted" style="margin:4px 0 0"><span class="code">${esc(r.exam.code)}</span> · ${esc(r.exam.startIST)} → ${esc(r.exam.endIST)} IST · ${r.attempts.length} attempt(s)</p>
+      <div class="filters">${statuses.map(s => { const n = s === 'All' ? r.attempts.length : r.attempts.filter(a => a.status === s).length; return n || s === 'All' ? `<button class="${ATT_FILTER === s ? 'on' : ''}" data-fl="${esc(s)}">${esc(s)} · ${n}</button>` : ''; }).join('')}</div>
+      ${list.length ? `<div class="tscroll"><table class="tbl"><thead><tr><th>Student</th><th>Status</th><th>Started</th><th>Submitted</th><th>Warnings</th><th>Score</th><th>Grade</th><th>Reviewer</th></tr></thead><tbody>
+      ${list.map(a => `<tr class="click" data-id="${esc(a.id)}"><td><div class="title">${esc(a.name)}</div><div class="small muted">${a.rollNo ? esc(a.rollNo) + ' · ' : ''}${esc(a.email)}</div></td>
+        <td><span class="${pillCls(a.status)}">${esc(a.status)}</span></td><td class="small">${esc(a.started)}</td><td class="small">${esc(a.submitted)}<div class="muted">${esc(a.submitReason || '')}</div></td>
+        <td>${a.violations ? `<b style="color:var(--red)">${a.violations}</b>` : '0'}</td><td>${a.total !== '' && a.total != null ? `<b>${a.total}</b> / ${a.max}` : '—'}</td><td>${a.grade ? `<b>${esc(a.grade)}</b> <span class="small ${a.result === 'Fail' ? '' : 'muted'}" style="${a.result === 'Fail' ? 'color:var(--red)' : ''}">${esc(a.result)}</span>` : '—'}</td><td class="small">${esc(a.reviewer || '—')}</td></tr>`).join('')}
+      </tbody></table></div>` : '<div class="empty">No attempts here.</div>'}</div>`;
+    $('#back').onclick = () => shell('exams');
+    if ($('#lv')) $('#lv').onclick = () => shell('live', examId);
+    $('#cands').onclick = () => shell('candidates', examId);
+    $('#view').querySelectorAll('[data-fl]').forEach(b => b.onclick = () => { ATT_FILTER = b.dataset.fl; draw(); });
+    $('#view').querySelectorAll('tr[data-id]').forEach(t => t.onclick = () => shell('attempt', { id: t.dataset.id, back: ['attempts', examId] }));
+  };
+  draw();
+}
+
+async function queueView() {
+  const my = VIEW;
+  let r;
+  try { r = await api('coeQueue'); } catch (e) { if (my === VIEW) $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  if (my !== VIEW) return;
+  const sec = (st, title, desc) => {
+    const list = r.attempts.filter(a => a.status === st);
+    return `<div class="card"><div class="between"><div><h2 style="font-size:18px">${title} <span class="${pillCls(st)}">${list.length}</span></h2><p class="small muted" style="margin:2px 0 0">${desc}</p></div></div>
+      ${list.length ? `<div class="tscroll"><table class="tbl mt"><thead><tr><th>Student</th><th>Exam</th><th>Score</th><th>Reviewer</th><th>Warnings</th></tr></thead><tbody>
+      ${list.map(a => `<tr class="click" data-id="${esc(a.id)}"><td><div class="title">${esc(a.name)}</div><div class="small muted">${esc(a.email)}</div></td><td>${esc(a.examTitle)}</td>
+        <td><b>${a.total}</b> / ${a.max}${a.grade ? ' · <b>' + esc(a.grade) + '</b>' : ''}</td><td class="small">${esc(a.reviewer || '—')}</td><td>${a.violations ? `<b style="color:var(--red)">${a.violations}</b>` : '0'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty" style="padding:16px">Nothing here.</div>'}</div>`;
+  };
+  setQueueBadge(r.attempts.filter(a => a.status !== 'Returned').length);
+  $('#view').innerHTML = sec('Sent to CoE', 'Awaiting your verification', 'Reviewers have marked these. Check, then click Verified — or send back.')
+    + sec('Verified', 'Verified — result not sent', 'Send the PDF result to the student.')
+    + sec('Returned', 'Returned to reviewers', 'Waiting for the reviewer to revise and resend.');
+  $('#view').querySelectorAll('tr[data-id]').forEach(t => t.onclick = () => shell('attempt', { id: t.dataset.id, back: ['queue'] }));
+}
+
+/* ============================ CANDIDATES & ADMIT CARDS ============================ */
+
+async function candidatesView(examId) {
+  const my = VIEW;
+  let r;
+  try { r = await api('listCandidates', { examId }); } catch (e) { if (my === VIEW) $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  if (my !== VIEW) return;
+  const x = r.exam, list = r.candidates;
+  const unsent = list.filter(c => !c.admitSent).length;
+  $('#view').innerHTML = `
+  <div class="between" style="margin-bottom:14px"><button class="link" id="back">← All exams</button><button class="btn ghost sm" id="toAtt">Attempts</button></div>
+  <div class="card"><div class="eyebrow">Candidates &amp; admit cards</div><h2 style="font-size:20px">${esc(x.title)}</h2>
+    <p class="small muted" style="margin:4px 0 0">${x.courseCode ? esc(x.courseCode) + ' · ' : ''}${esc(x.startIST)} → ${esc(x.endIST)} IST · roll numbers start with <b>${esc(x.rollPrefix || 'ACRI')}</b></p>
+    <div class="note ${x.registeredOnly ? 'green' : 'amber'}"><div class="between"><span>${x.registeredOnly ? '<b>Registered candidates only.</b> Students must sign in with the email listed below.' : '<b>Open to anyone with the access code.</b> Switch on to allow only the candidates below.'}</span>
+      <label class="sw"><input type="checkbox" id="regOnly" ${x.registeredOnly ? 'checked' : ''}><span></span></label></div></div>
+  </div>
+  <div class="card"><h2 style="font-size:17px">Add candidates</h2>
+    <div class="g2"><div>
+      <label class="f">Full name</label><input class="in" id="cn">
+      <label class="f">Email</label><input class="in" id="ce" type="email">
+      <div class="g2"><div><label class="f">Phone</label><input class="in" id="cp"></div><div><label class="f">Programme</label><input class="in" id="cg" value="${esc(x.programme)}"></div></div>
+      <button class="btn green mt" id="addOne">Add candidate</button></div>
+    <div><label class="f">Or paste many — one per line: Name, Email, Phone, Programme</label>
+      <textarea class="in" id="bulk" rows="8" placeholder="Riya Patel, riya@example.com, 9876543210&#10;Aman Shah, aman@example.com"></textarea>
+      <button class="btn ghost mt" id="addMany">Add all</button></div></div>
+    <div class="err" id="ce1"></div><div class="okm" id="co1"></div></div>
+  <div class="card"><div class="between"><div><h2 style="font-size:17px">Registered candidates · ${list.length}</h2><p class="small muted" style="margin:2px 0 0">${unsent} admit card(s) not sent yet. Roll numbers are assigned automatically.</p></div>
+    <div class="row"><button class="btn" id="sendUnsent" ${unsent ? '' : 'disabled'}>Send admit cards to all unsent (${unsent})</button><button class="btn ghost" id="sendAll" ${list.length ? '' : 'disabled'}>Resend to everyone</button></div></div>
+    <div id="prog" class="note blue" style="display:none"></div>
+    ${list.length ? `<div class="tscroll"><table class="tbl mt"><thead><tr><th>Roll no.</th><th>Candidate</th><th>Programme</th><th>Admit card</th><th>Exam</th><th>Grade</th><th></th></tr></thead><tbody>
+      ${list.map((c, i) => `<tr><td><span class="code">${esc(c.rollNo)}</span></td><td><div class="title">${esc(c.name)}</div><div class="small muted">${esc(c.email)}${c.phone ? ' · ' + esc(c.phone) : ''}</div></td>
+        <td class="small">${esc(c.programme || '—')}</td>
+        <td class="small">${c.admitSent ? `<span style="color:var(--green-d);font-weight:600">Sent</span><br>${esc(c.admitSent)}` : '<span style="color:var(--amber);font-weight:600">Not sent</span>'}</td>
+        <td>${c.attempt ? `<span class="${pillCls(c.attempt === 'Absent' ? 'Returned' : c.attempt)}">${esc(c.attempt)}</span>` : '<span class="small muted">—</span>'}</td>
+        <td>${c.grade ? '<b>' + esc(c.grade) + '</b>' : '—'}</td>
+        <td><div class="row" style="flex-wrap:nowrap"><button class="btn ghost sm" data-pv="${i}">Preview</button><button class="btn ghost sm" data-sd="${i}">${c.admitSent ? 'Resend' : 'Send'}</button>${c.attemptId ? `<button class="btn ghost sm" data-op="${i}">Attempt</button>` : `<button class="btn ghost sm" data-rm="${i}" style="color:var(--red)">Remove</button>`}</div></td></tr>`).join('')}
+    </tbody></table></div>` : '<div class="empty">No candidates yet. Add them above, then send admit cards.</div>'}
+  </div>`;
+
+  $('#back').onclick = () => shell('exams');
+  $('#toAtt').onclick = () => shell('attempts', examId);
+  $('#regOnly').onchange = async () => {
+    try { await api('setRegisteredOnly', { examId, value: $('#regOnly').checked }); toast($('#regOnly').checked ? 'Only registered candidates can sit this exam' : 'Exam open to anyone with the code'); shell('candidates', examId); }
+    catch (e) { $('#regOnly').checked = !$('#regOnly').checked; toast(e.message); }
+  };
+  const add = async (cands, btn) => {
+    showErr('#ce1'); $('#co1').style.display = 'none';
+    busy(btn, true, 'Adding…');
+    try {
+      const res = await api('addCandidates', { examId, candidates: cands });
+      shell('candidates', examId);
+      toast(res.added + ' candidate(s) added' + (res.skipped.length ? ', ' + res.skipped.length + ' skipped' : ''), 3500);
+      if (res.skipped.length) setTimeout(() => modal(`<h2>${res.skipped.length} line(s) skipped</h2><div class="small">${res.skipped.map(s => `<div class="ev"><b style="min-width:200px">${esc(s.email)}</b><span class="muted">${esc(s.reason)}</span></div>`).join('')}</div><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" onclick="closeModal()">OK</button></div>`), 400);
+    } catch (e) { showErr('#ce1', e.message); busy(btn, false); }
+  };
+  $('#addOne').onclick = () => add([{ name: $('#cn').value, email: $('#ce').value, phone: $('#cp').value, programme: $('#cg').value }], $('#addOne'));
+  $('#addMany').onclick = () => {
+    const rows = $('#bulk').value.split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => l.split(/\t|,/).map(p => p.trim()))
+      .filter(p => !(p[1] && /^e-?mail/i.test(p[1])))
+      .map(p => ({ name: p[0], email: p[1], phone: p[2] || '', programme: p[3] || x.programme || '' }));
+    if (!rows.length) return showErr('#ce1', 'Paste at least one line: Name, Email');
+    add(rows, $('#addMany'));
+  };
+  const sendCards = async (mode, ids, btn) => {
+    busy(btn, true, 'Sending…');
+    const prog = $('#prog'); prog.style.display = 'block'; prog.textContent = 'Preparing admit cards…';
+    let sent = 0, failed = [], skip = [];
+    try {
+      for (;;) {
+        const res = await api('sendAdmitCards', { examId, mode, ids, skip });
+        sent += res.sent; failed = failed.concat(res.failed); skip = skip.concat(res.done);
+        prog.textContent = `Sent ${sent} admit card(s)${res.remaining ? ' — ' + res.remaining + ' to go, keep this page open…' : '.'}`;
+        if (!res.remaining || !res.done.length) break;
+      }
+    } catch (e) { failed.push({ email: 'Stopped', error: e.message }); }
+    await candidatesView.reload(examId);
+    toast(sent + ' admit card(s) sent', 3500);
+    if (failed.length) modal(`<h2>${failed.length} admit card(s) not sent</h2><div class="small">${failed.map(f => `<div class="ev"><b style="min-width:200px">${esc(f.email)}</b><span class="muted">${esc(f.error)}</span></div>`).join('')}</div><div class="row" style="justify-content:flex-end;margin-top:14px"><button class="btn" onclick="closeModal()">OK</button></div>`);
+  };
+  $('#sendUnsent').onclick = async () => {
+    if (!(await confirmBox('Send admit cards?', `${unsent} candidate(s) will get their admit card PDF by email.`, 'Send now', 'green'))) return;
+    sendCards('unsent', [], $('#sendUnsent'));
+  };
+  $('#sendAll').onclick = async () => {
+    if (!(await confirmBox('Resend to everyone?', `All ${list.length} candidate(s) will get their admit card again, including those who already have it.`, 'Resend all', 'amber'))) return;
+    sendCards('all', [], $('#sendAll'));
+  };
+  $('#view').querySelectorAll('[data-sd]').forEach(b => b.onclick = () => sendCards('selected', [list[b.dataset.sd].id], b));
+  $('#view').querySelectorAll('[data-pv]').forEach(b => b.onclick = async () => {
+    busy(b, true, '…');
+    try { const res = await api('admitCardPreview', { candidateId: list[b.dataset.pv].id }); openPdf(res.pdf, res.name); } catch (e) { toast(e.message); }
+    busy(b, false);
+  });
+  $('#view').querySelectorAll('[data-op]').forEach(b => b.onclick = () => shell('attempt', { id: list[b.dataset.op].attemptId, back: ['candidates', examId] }));
+  $('#view').querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => {
+    const c = list[b.dataset.rm];
+    if (!(await confirmBox('Remove candidate?', `${esc(c.name)} (${esc(c.rollNo)}) will be removed from this exam. Their roll number is not reused.`, 'Remove', 'red'))) return;
+    try { await api('deleteCandidate', { candidateId: c.id }); toast('Candidate removed'); shell('candidates', examId); } catch (e) { toast(e.message); }
+  });
+}
+candidatesView.reload = examId => { shell('candidates', examId); return Promise.resolve(); };
+
+/* ============================ ATTEMPT DETAIL ============================ */
+
+let AT = null;
+async function attemptView(arg) {
+  const my = VIEW;
+  let r;
+  try { r = await api('getAttempt', { attemptId: arg.id }); } catch (e) { if (my === VIEW) $('#view').innerHTML = `<div class="note red">${esc(e.message)}</div>`; return; }
+  if (my !== VIEW) return;
+  AT = r;
+  loadSnaps.done = false;
+  const a = r.attempt, st = a.status;
+  const editable = ['Submitted', 'Under Review', 'Returned', 'Sent to CoE', 'Verified'].indexOf(st) >= 0;
+  const VTYPES = ['TAB_HIDDEN', 'WINDOW_BLUR', 'FULLSCREEN_EXIT', 'SCREEN_SHARE_STOPPED', 'CAMERA_STOPPED'];
+  $('#view').innerHTML = `<div class="between" style="margin-bottom:14px"><button class="link" id="back">← Back</button><span class="small muted">Attempt ${esc(a.id)}</span></div>
+  <div class="card"><div class="between"><div><div class="eyebrow">${esc(r.exam.title)}</div><h2 style="font-size:21px">${esc(a.name)} <span class="${pillCls(st)}" style="vertical-align:middle">${esc(st)}</span></h2>
+    <p class="small muted" style="margin:3px 0 0">${a.rollNo ? 'Roll No. <b>' + esc(a.rollNo) + '</b> · ' : ''}${esc(a.email)} · started ${esc(a.started)} · submitted ${esc(a.submitted || '—')}${a.submitReason ? ' (' + esc(a.submitReason) + ')' : ''}</p></div>
+    <div style="text-align:right"><div style="font-family:Montserrat;font-weight:800;font-size:26px;color:var(--navy)"><span id="liveTot">${a.total === '' ? '—' : a.total}</span> <span class="muted" style="font-size:16px">/ ${a.max}</span></div>
+    <div class="small" id="liveGrade" style="font-weight:700;color:var(--green-d)"></div>
+    <div class="small ${a.violations ? '' : 'muted'}" style="${a.violations ? 'color:var(--red);font-weight:700' : ''}">${a.violations} proctoring warning(s)</div></div></div>
+    ${a.reviewer ? `<div class="note blue">Reviewer: <b>${esc(a.reviewer)}</b>${a.reviewerRemarks ? '<br>' + esc(a.reviewerRemarks).replace(/\n/g, '<br>') : ''}</div>` : ''}
+    ${a.coeRemarks ? `<div class="note ${st === 'Returned' ? 'red' : 'green'}">CoE note: ${esc(a.coeRemarks).replace(/\n/g, '<br>')}</div>` : ''}
+    ${a.verifiedBy ? `<div class="note green">Verified by ${esc(a.verifiedBy)} on ${esc(a.verifiedAt)}${a.resultSentAt ? ' · result sent ' + esc(a.resultSentAt) : ''}</div>` : ''}
+  </div>
+  <div class="card"><div class="tabs" style="max-width:380px"><button class="on" id="tA">Answers &amp; marks</button><button id="tP">Proctoring (${r.events.filter(e => VTYPES.indexOf(e.type) >= 0).length} / ${r.snapshots.length})</button></div>
+    <div id="paneA">${r.questions.map((q, i) => answerCard(q, i, editable)).join('')}</div>
+    <div id="paneP" style="display:none">
+      <h3 style="font-size:15px;margin-top:8px">Activity log</h3>
+      <div>${r.events.map(e => `<div class="ev ${VTYPES.indexOf(e.type) >= 0 ? 'v' : ''}"><span class="muted" style="min-width:150px">${esc(e.time)}</span><b>${esc(e.type.replace(/_/g, ' '))}</b><span class="muted">${esc(e.detail)}</span></div>`).join('') || '<div class="empty">No events.</div>'}</div>
+      <h3 style="font-size:15px;margin-top:18px">Snapshots</h3>
+      ${r.snapshots.length ? `<div class="gal" id="gal">${r.snapshots.map((s, i) => `<figure><img data-fid="${esc(s.fileId)}" alt=""><figcaption>${esc(s.time)} · ${esc(s.kind)}<br>${esc(s.reason)}</figcaption></figure>`).join('')}</div>
+        <button class="btn ghost mt" id="more">Load snapshots</button>` : '<div class="empty">No snapshots stored.</div>'}
+    </div>
+  </div>
+  ${editable || st === 'Result Sent' ? `<div class="card"><label class="f" style="margin-top:0">Note from the CoE <span class="muted">(required when sending back to the reviewer)</span></label><textarea class="in" id="coeNote" rows="3">${esc(a.coeRemarks || '')}</textarea></div>` : ''}
+  <div class="sticky"><div class="row">
+    ${editable ? '<button class="btn ghost" id="bSave">Save marks</button>' : ''}
+    ${['Sent to CoE', 'Submitted', 'Under Review', 'Returned'].indexOf(st) >= 0 ? '<button class="btn green" id="bVer">✓ Verified</button>' : ''}
+    ${['Sent to CoE', 'Verified'].indexOf(st) >= 0 ? '<button class="btn amber" id="bBack">Send back to reviewer</button>' : ''}
+    ${['Verified', 'Result Sent', 'Sent to CoE'].indexOf(st) >= 0 ? '<button class="btn ghost" id="bGc">Preview grade card</button>' : ''}
+    ${st === 'Verified' ? '<button class="btn" id="bRes">Send grade card to student</button>' : ''}
+    ${st === 'Result Sent' ? '<button class="btn ghost" id="bRes">Resend result</button>' : ''}
+    <div class="spacer"></div>
+    ${st !== 'Voided' ? '<button class="btn ghost sm" id="bVoid" style="color:var(--red)">Void attempt (allow retake)</button>' : ''}
+  </div><div class="err" id="ae"></div></div>`;
+
+  $('#back').onclick = () => shell(arg.back[0], arg.back[1]);
+  $('#tA').onclick = () => { $('#tA').classList.add('on'); $('#tP').classList.remove('on'); $('#paneA').style.display = ''; $('#paneP').style.display = 'none'; };
+  $('#tP').onclick = () => { $('#tP').classList.add('on'); $('#tA').classList.remove('on'); $('#paneP').style.display = ''; $('#paneA').style.display = 'none'; if (!loadSnaps.done) loadSnaps(); };
+  if ($('#more')) $('#more').onclick = loadSnaps;
+  if ($('#gal')) $('#gal').addEventListener('click', ev => { if (ev.target.tagName === 'IMG' && ev.target.src) modal(`<img src="${ev.target.src}" style="width:100%;border-radius:10px"><div class="row" style="justify-content:flex-end;margin-top:10px"><button class="btn ghost" onclick="closeModal()">Close</button></div>`, true); });
+  $('#paneA').addEventListener('input', recalc);
+  const note = () => $('#coeNote') ? $('#coeNote').value : undefined;
+  const act = async (btn, fn, label) => { showErr('#ae'); busy(btn, true, label); try { await fn(); } catch (e) { showErr('#ae', e.message); busy(btn, false); } };
+  if ($('#bSave')) $('#bSave').onclick = () => act($('#bSave'), async () => { await api('saveMarks', { attemptId: a.id, marks: collectMarks(), remarks: note() }); toast('Marks saved'); shell('attempt', arg); }, 'Saving…');
+  if ($('#bVer')) $('#bVer').onclick = () => act($('#bVer'), async () => {
+    await api('saveMarks', { attemptId: a.id, marks: collectMarks(), remarks: note() });
+    await api('verify', { attemptId: a.id, remarks: note() });
+    toast('Verified. You can now send the result.'); shell('attempt', arg);
+  }, 'Verifying…');
+  if ($('#bBack')) $('#bBack').onclick = async () => {
+    const n = (note() || '').trim() ? note() : await confirmBox('Send back to reviewer', 'Tell the reviewer what to change. They will get an email.', 'Send back', 'amber', true, 'e.g. Please re-check Q4; the answer deserves partial credit.');
+    if (n === null || !String(n).trim()) return showErr('#ae', 'Write a note for the reviewer first.');
+    act($('#bBack'), async () => { await api('sendBack', { attemptId: a.id, remarks: n }); toast('Returned to reviewer'); shell('attempt', arg); }, 'Sending…');
+  };
+  if ($('#bGc')) $('#bGc').onclick = () => act($('#bGc'), async () => { const x = await api('gradeCardPreview', { attemptId: a.id }); openPdf(x.pdf, x.name); busy($('#bGc'), false); }, 'Preparing…');
+  if ($('#bRes')) $('#bRes').onclick = async () => {
+    if (!(await confirmBox(st === 'Result Sent' ? 'Resend result?' : 'Send result?', `The grade card PDF (${esc(a.total)} / ${esc(a.max)}${a.grade ? ', grade ' + esc(a.grade) : ''}) will be emailed to <b>${esc(a.email)}</b>.`, 'Send result', 'green'))) return;
+    act($('#bRes'), async () => { const x = await api('sendResult', { attemptId: a.id }); toast('Result emailed via ' + x.via); shell('attempt', arg); }, 'Sending…');
+  };
+  if ($('#bVoid')) $('#bVoid').onclick = async () => {
+    const n = await confirmBox('Void this attempt?', 'The attempt is kept for records but marked Voided, and the student can take the exam again with the same email.', 'Void attempt', 'red', true, 'Reason (recorded)');
+    if (n === null) return;
+    act($('#bVoid'), async () => { await api('voidAttempt', { attemptId: a.id, remarks: n || 'Voided by CoE' }); toast('Attempt voided'); shell('attempt', arg); }, 'Voiding…');
+  };
+  recalc();
+}
+
+function answerCard(q, i, editable) {
+  let resp;
+  if (q.type === 'MCQ') {
+    const m = String(q.answer).match(/^(\d+)\)/), pick = m ? Number(m[1]) - 1 : -1;
+    resp = q.options.map((o, j) => `<div class="o ${j === pick ? 'pick' : ''} ${j === q.correct ? 'right' : ''} ${j === pick && j !== q.correct ? 'wrong' : ''}">${String.fromCharCode(65 + j)}. ${esc(o)} ${j === q.correct ? '✓' : ''}${j === pick ? ' <span class="small">← student</span>' : ''}</div>`).join('')
+      + (pick < 0 ? '<div class="small muted" style="margin-top:4px">Not answered</div>' : '');
+  } else resp = `<div class="resp">${q.answer ? esc(q.answer) : '<span class="muted">No answer written</span>'}</div>`;
+  return `<div class="ans"><div class="between"><span class="small" style="font-weight:700;color:var(--blue)">Q${i + 1}${q.section ? ' · ' + esc(q.section) : ''} · ${q.type === 'MCQ' ? 'Multiple choice' : 'Written'} · ${q.marks} marks</span>${q.type === 'MCQ' ? `<span class="small muted">Auto-marked: ${q.auto === '' ? '—' : q.auto}</span>` : ''}</div>
+    <div class="q">${esc(q.text)}</div>${resp}
+    ${q.modelAnswer ? `<details style="margin-top:8px"><summary class="small" style="cursor:pointer;color:var(--green-d);font-weight:600">Model answer / marking scheme from the setter</summary><div class="resp" style="margin-top:6px;background:var(--green-bg)">${esc(q.modelAnswer)}</div></details>` : ''}
+    ${q.recorded ? `<div class="mk"><span class="small" style="font-weight:600">Marks</span><input class="in m" type="number" min="0" max="${q.marks}" step="0.5" data-mq="${esc(q.id)}" value="${esc(q.awarded)}" ${editable ? '' : 'disabled'}><span class="small muted">/ ${q.marks}</span>
+      <input class="in c" data-cq="${esc(q.id)}" value="${esc(q.comment)}" placeholder="Comment (optional)" ${editable ? '' : 'disabled'}></div>` : '<div class="small muted mt">No answer record (the question was added after this attempt).</div>'}</div>`;
+}
+
+function collectMarks() {
+  const m = {};
+  document.querySelectorAll('[data-mq]').forEach(el => { m[el.dataset.mq] = { awarded: el.value === '' ? '' : Number(el.value), comment: (document.querySelector(`[data-cq="${el.dataset.mq}"]`) || {}).value || '' }; });
+  return m;
+}
+function recalc() {
+  let t = 0, missing = 0;
+  document.querySelectorAll('[data-mq]').forEach(el => { if (el.value === '') missing++; else t += Number(el.value) || 0; });
+  const e = $('#liveTot'); if (e) e.textContent = (Math.round(t * 100) / 100) + (missing ? ' *' : '');
+  const g = $('#liveGrade');
+  if (g && AT) {
+    const max = Number(AT.attempt.max) || AT.questions.reduce((s, q) => s + (Number(q.marks) || 0), 0);
+    const x = gradeOf(AT.exam.bands, t, max);
+    g.textContent = missing ? 'Grade shown once every question is marked' : `${x.pct}% · Grade ${x.grade} (${x.meaning}) · GP ${x.gp} · ${x.result}`;
+    g.style.color = missing ? 'var(--muted)' : (x.result === 'Fail' ? 'var(--red)' : 'var(--green-d)');
+  }
+}
+
+async function loadSnaps() {
+  loadSnaps.done = true;
+  const imgs = [...document.querySelectorAll('#gal img[data-fid]')].filter(i => !i.src).slice(0, 12);
+  if (!imgs.length) { if ($('#more')) $('#more').style.display = 'none'; return; }
+  const b = $('#more'); busy(b, true, 'Loading…');
+  try {
+    const r = await api('getSnapshots', { fileIds: imgs.map(i => i.dataset.fid) });
+    imgs.forEach(i => { if (r.images[i.dataset.fid]) i.src = r.images[i.dataset.fid]; else i.alt = 'Unavailable'; });
+  } catch (e) { toast(e.message); }
+  busy(b, false);
+  const left = [...document.querySelectorAll('#gal img[data-fid]')].filter(i => !i.src).length;
+  if (b) b.textContent = left ? 'Load more (' + left + ' left)' : 'All snapshots loaded';
+  if (b && !left) b.disabled = true;
+}
+
+/* ============================ LIVE PROCTOR ============================ */
+
+async function liveView(examId) {
+  const my = VIEW;
+  if (!EXAMS.length) { try { EXAMS = (await api('listExams')).exams; } catch (e) {} }
+  if (my !== VIEW) return;
+  const list = EXAMS.filter(e => e.live);
+  if (!examId) { const l = list.find(e => e.state === 'live'); examId = l ? l.id : ''; }
+  $('#view').innerHTML = `<div class="card"><div class="between"><div><div class="eyebrow">Live Proctor</div><h2 style="font-size:20px">Near-live view of every student</h2>
+      <p class="small muted" style="margin:3px 0 0">Screens and webcams refresh every few seconds. Click a tile to enlarge it.</p></div>
+      <select class="in" id="lsel" style="max-width:380px"><option value="">Choose an exam…</option>${list.map(e => `<option value="${esc(e.id)}" ${e.id === examId ? 'selected' : ''}>${esc(e.title)} — ${e.state === 'live' ? 'LIVE' : e.state}</option>`).join('')}</select></div>
+    <div id="lstat" class="small muted mt"></div><div class="lgrid" id="lgrid"></div></div>`;
+  $('#lsel').onchange = () => shell('live', $('#lsel').value);
+  if (examId) livePoll(examId, my);
+  else $('#lgrid').innerHTML = `<div class="empty" style="grid-column:1/-1">${list.length ? 'Choose an exam above.' : 'No exams have Live Proctor switched on.'}</div>`;
+}
+
+let ZOOM = null, LIVE_PG = 1, LIVE_EX = '';
+async function livePoll(examId, my) {
+  if (my !== VIEW) return;
+  if (LIVE_EX !== examId) { LIVE_EX = examId; LIVE_PG = 1; }
+  const t0 = Date.now();
+  try {
+    const r = await api('liveGrid', { examId, page: LIVE_PG, zoom: ZOOM || '' });
+    if (my !== VIEW) return;
+    LIVE_PG = r.page;
+    const now = Date.now() + clockOffset, hb = r.heartbeatSeconds || 30;
+    const sm = r.summary || {};
+    $('#lstat').innerHTML = `<div class="between"><span><b style="color:var(--navy)">${r.total}</b> student(s) writing${sm.paused ? ' · <b style="color:var(--blue)">' + sm.paused + ' paused</b>' : ''}${sm.warned ? ' · <b style="color:var(--red)">' + sm.warned + ' with warnings</b>' : ''}${sm.noSignal ? ' · ' + sm.noSignal + ' no signal' : ''} · updated ${new Date().toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</span>
+      ${r.pages > 1 ? `<span class="row" style="gap:6px"><button class="btn ghost sm" id="lpPrev" ${r.page <= 1 ? 'disabled' : ''}>‹ Prev</button><span class="small" style="font-weight:600">Page ${r.page} of ${r.pages}</span><button class="btn ghost sm" id="lpNext" ${r.page >= r.pages ? 'disabled' : ''}>Next ›</button></span>` : ''}</div>
+      <div class="small muted" style="margin-top:4px">Only the ${r.perPage} students on this page stream images (every ${r.liveSeconds} s), which keeps the system light. A newly opened page fills in within about ${hb} seconds.</div>`;
+    const go = d => { LIVE_PG = Math.max(1, LIVE_PG + d); $('#lgrid').innerHTML = '<div class="spin" style="grid-column:1/-1"></div>'; clearTimeout(livePoll.t); livePoll(examId, my); };
+    if ($('#lpPrev')) $('#lpPrev').onclick = () => go(-1);
+    if ($('#lpNext')) $('#lpNext').onclick = () => go(1);
+    const g = $('#lgrid');
+    const tiles = r.students.filter(s => !s.zoomOnly);
+    if (!tiles.length) g.innerHTML = `<div class="empty" style="grid-column:1/-1">${r.exam.state === 'live' ? 'Nobody is writing right now.' : 'This exam is not live.'}</div>`;
+    else {
+      g.innerHTML = tiles.map(s => {
+        const age = s.seenAt ? (now - s.seenAt) / 1000 : 999, sig = age < hb + 15 ? 'g' : age < 2 * hb + 20 ? 'a' : 'r';
+        const left = Math.max(0, Math.floor((s.deadline - now) / 60000));
+        return `<div class="lc" data-id="${esc(s.id)}"><div class="scr">${s.scr ? `<img class="s" src="${s.scr}">` : (r.exam.screen ? 'Waiting for first frame…' : 'Screen not monitored')}${s.cam ? `<img class="c" src="${s.cam}">` : ''}</div>
+          <div class="inf"><div style="min-width:0"><div class="nm"><span class="sig ${sig}"></span>${esc(s.name)}</div><div class="small muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.email)} · ${left} min left${sig === 'r' ? ' · no signal' : ''}</div></div>
+          ${s.paused ? '<span class="pill p-In-Progress">Paused</span>' : `<span class="pill ${s.violations ? 'p-Returned' : 'p-Verified'}">${s.violations} warn</span>`}</div></div>`;
+      }).join('');
+      g.querySelectorAll('.lc').forEach(c => c.onclick = () => { ZOOM = c.dataset.id; drawZoom(r); });
+      if (ZOOM && $('#ov').classList.contains('on')) drawZoom(r);
+    }
+  } catch (e) { if (my === VIEW) $('#lstat').innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; }
+  const wait = Math.max(1000, 5000 - (Date.now() - t0));
+  clearTimeout(livePoll.t);
+  livePoll.t = setTimeout(() => livePoll(examId, my), wait);
+}
+function drawZoom(r) {
+  const s = r.students.find(x => x.id === ZOOM);
+  if (!s) return;
+  modal(`<div class="between"><h2>${esc(s.name)} <span class="small muted">${esc(s.email)}</span></h2><button class="btn ghost sm" onclick="closeModal()">Close</button></div>
+    <div style="display:grid;grid-template-columns:3fr 1fr;gap:12px;margin-top:10px">
+      <div style="background:#0B2E4F;border-radius:10px;aspect-ratio:16/9;display:grid;place-items:center;color:#9FB3C5">${s.scr ? `<img src="${s.scr}" style="width:100%;height:100%;object-fit:contain">` : 'No screen frame'}</div>
+      <div><div style="background:#0B2E4F;border-radius:10px;aspect-ratio:4/3;display:grid;place-items:center;color:#9FB3C5;overflow:hidden">${s.cam ? `<img src="${s.cam}" style="width:100%">` : 'No camera'}</div>
+      <p class="small"><b>${s.violations}</b> warning(s)<br>Attempt ${esc(s.id)}</p></div></div>`, true);
+  modal.onClose = () => { ZOOM = null; };
+}
+
+/* ============================ START ============================ */
+SESSION = loadSession();
+if (BOOT && BOOT.session) saveSession(BOOT.session);
+if (API_URL.indexOf('PASTE_') === 0) setTimeout(() => toast('Setup needed: paste the Apps Script /exec URL into API_URL.', 6000), 300);
+if (SESSION && SESSION.token) { api('me').then(r => { SESSION.user = r.user; saveSession(SESSION); shell('exams'); }).catch(e => { if (SESSION) authView(e.message, 'in'); }); $('#app').innerHTML = '<div class="spin"></div>'; }
+else authView('', 'in');
+</script>
+</body>
+</html>
